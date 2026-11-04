@@ -1,0 +1,1988 @@
+// Channel navigation, direct messages, server management, and server settings.
+window.switchChannel = (c) => {
+  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
+  mode = 'channels';
+  dmWith = null;
+  currentServer = null;
+  chan = c;
+  document.getElementById('dm-btn').classList.remove('active');
+  if (typeof window.addRecentChannel === 'function') window.addRecentChannel(c);
+  renderServerList();
+  renderUserList();
+  renderSidebar();
+  updateHeader();
+  listen();
+};
+
+// Helper: go to first server if available, otherwise show empty state
+window.goToServer = () => {
+  if (servers.length > 0) { switchServer(servers[0].id); return; }
+  currentServer = null;
+  mode = 'channels';
+  dmWith = null;
+  chan = null;
+  document.getElementById('dm-btn').classList.remove('active');
+  renderServerList();
+  renderUserList();
+  renderSidebar();
+  updateHeader();
+  listen();
+};
+
+window.toggleDMView = () => {
+  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
+  if (mode === 'dms') {
+    mode = 'channels';
+    dmWith = null;
+    if (!chan || chan.startsWith('dm_')) chan = null;
+    document.getElementById('dm-btn').classList.remove('active');
+  } else {
+    mode = 'dms';
+    dmWith = null;
+    currentServer = null;
+    chan = null;
+    document.getElementById('dm-btn').classList.add('active');
+  }
+  document.getElementById('server-banner').style.display = 'none';
+  renderServerList();
+  renderUserList();
+  renderSidebar();
+  updateHeader();
+  listen();
+};
+
+window.openDM = async (u) => {
+  const privacy = userPrivacyMap.get(u) || {};
+  if (privacy.dmAnyone === false) {
+    try {
+      const snap1 = await getDocs(query(collection(db, "friends"), where("from", "==", user)));
+      const snap2 = await getDocs(query(collection(db, "friends"), where("to", "==", user)));
+      const isFriend =
+        snap1.docs.some(d => d.data().to === u && d.data().status === "accepted") ||
+        snap2.docs.some(d => d.data().from === u && d.data().status === "accepted");
+
+      if (!isFriend) {
+        appAlert('This user has disabled direct messages from people they are not friends with.');
+        return;
+      }
+    } catch (e) {}
+  }
+
+  dmWith = u;
+  mode = 'dms';
+  currentServer = null;
+  chan = 'dm_' + [user, u].sort().join('_');
+  document.getElementById('dm-btn').classList.add('active');
+  renderServerList();
+  renderUserList();
+  renderSidebar();
+  updateHeader();
+  listen();
+};
+
+function dmKey(a, b) {
+  return 'dm_' + [a, b].sort().join('_');
+}
+
+function knownUsers() {
+  const set = new Set();
+  allUsers.forEach(u => u && set.add(u));
+  backfillUsers.forEach(u => u && set.add(u));
+  lastPresenceUsers.forEach(x => x && x.user && set.add(x.user));
+  servers.forEach(s => (s.members || []).forEach(u => u && set.add(u)));
+  set.delete(user);
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+const unreadBadge = (c) => {
+  const n = (window._unreadCounts && window._unreadCounts[c]) || 0;
+  return n > 0 ? '<span class="badge">' + n + '</span>' : '';
+};
+
+function renderSidebar() {
+  const h3 = document.querySelector('.sb h3');
+  const ch = document.querySelector('.ch');
+
+  if (mode === 'channels') {
+    const srv = currentServer ? servers.find(sv => sv.id === currentServer) : null;
+    h3.textContent = srv ? srv.name : 'Channels';
+
+    if (srv) {
+      const visibleChs = (srv.channels || [{ name: 'general' }]).filter(c => !c.private || srv.owner === user || (typeof getServerRole === 'function' && getServerRole(srv).isAdmin));
+      const voiceChs = visibleChs.filter(c => c.type === 'voice');
+      const textChs = visibleChs.filter(c => c.type !== 'voice');
+      const cats = {};
+      const uncat = [];
+      textChs.forEach(c => {
+        if (c.category) {
+          if (!cats[c.category]) cats[c.category] = [];
+          cats[c.category].push(c);
+        } else {
+          uncat.push(c);
+        }
+      });
+      let chBtns = '';
+      if (voiceChs.length) chBtns += `<div class="cat">Voice Channels</div>` + voiceChs.map(c => renderChannelItem(srv, c)).join('');
+      if (uncat.length) chBtns += `<div class="cat">Text Channels</div>` + uncat.map(c => renderChannelItem(srv, c)).join('');
+      Object.keys(cats).sort().forEach(cat => {
+        chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(srv, c)).join('');
+      });
+      ch.innerHTML = chBtns +
+        `<button class="cb muted" onclick="openChannelModal('${srv.id}')" style="color:var(--bl);">+ Add Channel</button>` +
+        `<button class="cb muted" onclick="shareInvite('${srv.id}')">Invite Code: ${escHtml(srv.inviteCode)}</button>` +
+        `<button class="cb muted" onclick="revokeInvite('${srv.id}')" style="color:var(--danger);">Revoke Invite</button>` +
+        `<button class="cb muted" onclick="copyInviteLink('${srv.id}')" style="color:var(--bl);">Copy Invite</button>`;
+    } else {
+      ch.innerHTML = `<div class="cat">Servers</div><div class="rs-empty" style="padding:8px;">Select a server from the rail</div>`;
+    }
+  } else {
+    h3.textContent = 'Direct Messages';
+    const users = knownUsers();
+    let html = `<div class="cat">Direct Messages</div>`;
+    if (users.length === 0) html += `<div class="rs-empty" style="padding:8px;">No users yet</div>`;
+    users.forEach(u => {
+      const safe = escHtml(u);
+      html += `<button class="cb ${dmWith === u ? 'active' : ''}" onclick="openDM(this.dataset.user)" data-user="${safe}">@ ${safe}</button>${unreadBadge('dm_' + [user, u].sort().join('_'))}`;
+    });
+    ch.innerHTML = html;
+  }
+}
+
+function renderUserList() {
+  const server = currentServer ? servers.find(sv => sv.id === currentServer) : null;
+  const scope = server ? (server.members || []) : (user ? [...knownUsers(), user] : knownUsers());
+  const presMap = new Map(lastPresenceUsers.map(p => [p.user, p]));
+  const colors = { online: 'var(--pr)', idle: 'var(--yellow)', dnd: 'var(--danger)', offline: 'var(--mut)' };
+  const labels = { online: 'Online', idle: 'Idle', dnd: 'Do Not Disturb', offline: 'Offline' };
+  const order = { online: 0, idle: 1, dnd: 2, offline: 3 };
+  const seen = new Set();
+  const online = [];
+  const offline = [];
+
+  scope.forEach(name => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+
+    const p = presMap.get(name);
+    const privacy = name === user ? (settings ? settings.privacy : null) : (userPrivacyMap.get(name) || null);
+    const showOnline = !privacy || privacy.onlineStatus !== false;
+
+    if (p && showOnline) online.push({ ...p, status: effStatus(p) });
+    else if (name === user) online.push({ user: name, status: 'online' });
+    else offline.push(name);
+  });
+
+  online.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) || a.user.localeCompare(b.user));
+  offline.sort((a, b) => a.localeCompare(b));
+
+  const row = (name, status) => {
+    const upfp = userPfpMap.get(name);
+    const hasPfp = upfp && !upfp.startsWith('file:///');
+    const avStyle = hasPfp ? `style="background-image:url('${escHtml(upfp)}');"` : '';
+    const avContent = hasPfp ? '' : escHtml((name || '?')[0].toUpperCase());
+
+    const memberPresence = presMap.get(name);
+    const act = memberPresence && memberPresence.activity ? escHtml(memberPresence.activity) : '';
+    const s = currentServer ? servers.find(sv => sv.id === currentServer) : null;
+    const isOwner = s && s.owner === name;
+    const isAdmin = s && (s.admins || []).includes(name);
+    const roleBadge = isOwner ? '<span style="font-size:9px;background:var(--danger);color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">OWNER</span>' : isAdmin ? '<span style="font-size:9px;background:var(--yellow);color:#000;padding:1px 4px;border-radius:3px;margin-left:4px;">ADMIN</span>' : '';
+    return `<div class="member ${status === 'offline' ? 'off' : ''}" data-user="${escHtml(name)}" onclick="openProfile(this.dataset.user)">` +
+      `<div class="member-avatar" ${avStyle}>${avContent}<span class="status-dot" title="${labels[status] || 'Online'}" style="background:${colors[status] || 'var(--mut)'}"></span></div>` +
+      `<div class="member-name">${escHtml(name)}${roleBadge}</div>` +
+      (act ? `<div class="member-activity" style="font-size:11px;color:var(--mut);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${act}</div>` : '') +
+      `</div>`;
+  };
+
+  const ul = document.getElementById('user-list');
+  const pfpSig = [...userPfpMap.entries()].map(([k, v]) => k + ':' + v.slice(0, 16)).join('|');
+  const privSig = [...userPrivacyMap.entries()].map(([k, v]) => k + ':' + JSON.stringify(v)).join('|');
+  const sig = 'O:' + online.map(u => u.user + ':' + u.status).join('|') + '#F:' + offline.join('|') + '#P:' + pfpSig + '#V:' + privSig + '#' + (currentServer || '') + '/' + (mode || '');
+
+  if (sig !== userListSig) {
+    userListSig = sig;
+    let html = online.map(u => row(u.user, u.status)).join('');
+    if (offline.length) html += `<div class="rs-cat">Offline — ${offline.length}</div>` + offline.map(n => row(n, 'offline')).join('');
+    ul.innerHTML = (online.length || offline.length) ? html : `<div class="rs-empty">No one is around...</div>`;
+    if (mode === 'dms') renderSidebar();
+  }
+
+  const rt = document.getElementById('rs-title');
+  if (rt) rt.textContent = 'Online (' + online.length + ') / Offline (' + offline.length + ')';
+}
+
+let userListSig = '';
+setInterval(() => { if (user && lastPresenceUsers.length) renderUserList(); }, 15000);
+
+// ---------- Member Search Filter ----------
+window.filterMembers = () => {
+  const search = (document.getElementById('member-search')?.value || '').toLowerCase().trim();
+  const roleFilter = (document.getElementById('member-role-filter')?.value || '').toLowerCase();
+  const ul = document.getElementById('user-list');
+  if (!ul) return;
+  const members = ul.querySelectorAll('.member');
+  members.forEach(m => {
+    const name = (m.dataset.user || '').toLowerCase();
+    const isOffline = m.classList.contains('off');
+    const isOnline = !isOffline;
+    const isOwner = false; // Would need server data to determine
+    const isAdmin = false; // Would need server data to determine
+    let show = true;
+    if (search && !name.includes(search)) show = false;
+    if (roleFilter === 'online' && !isOnline) show = false;
+    if (roleFilter === 'offline' && !isOffline) show = false;
+    m.style.display = show ? '' : 'none';
+  });
+};
+
+function updateHeader() {
+  const h = document.getElementById('chat-header');
+  h.style.display = 'flex';
+
+  if (mode === 'dms' && dmWith) {
+    h.innerHTML = `<span class="hash">@</span><span class="hname">${escHtml(dmWith)}</span><span id="header-typing" style="margin-left:8px;font-size:11px;color:var(--mut);"></span>`;
+  } else if (mode === 'dms') {
+    h.innerHTML = `<span class="hname">Direct Messages</span>`;
+  } else {
+    const label = chan && chan.startsWith('srv_') ? chan.split('_').slice(2).join('_') : (chan || 'general');
+    const s = servers.find(x => x.id === currentServer);
+    const ch = s && (s.channels || []).find(c => c.name === label);
+    const topic = ch && ch.topic ? ch.topic : '';
+    const desc = ch && ch.description ? ch.description : '';
+    const canEdit = s && (s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
+    const topicBtn = canEdit ? `<button onclick="setChannelTopic('${currentServer}','${escHtml(label)}')" style="margin-left:8px;background:transparent;border:none;color:var(--mut);cursor:pointer;font-size:11px;" title="Set topic"><img src="/icons/edit.svg" alt="Set topic"></button>` : '';
+    const descBtn = canEdit ? `<button onclick="setChannelDescription('${currentServer}','${escHtml(label)}')" style="margin-left:4px;background:transparent;border:none;color:var(--mut);cursor:pointer;font-size:11px;" title="Set description"><img src="/icons/note.svg" alt="Set description"></button>` : '';
+    h.innerHTML = `<span class="hash">#</span><span class="hname">${escHtml(label)}</span><span id="header-typing" style="margin-left:8px;font-size:11px;color:var(--mut);"></span>${topic ? `<span class="channel-topic" style="margin-left:12px;color:var(--mut);font-size:12px;font-weight:400;">${escHtml(topic)}</span>` : ''}${topicBtn}${descBtn}${desc ? `<div style="width:100%;color:var(--mut);font-size:11px;margin-top:2px;">${escHtml(desc)}</div>` : ''}`;
+  }
+
+  document.body.classList.toggle('dm-mode', mode === 'dms');
+  const placeholderLabel = (mode === 'dms' && dmWith) ? 'Message @' + dmWith : 'Message #' + (chan && chan.startsWith('srv_') ? chan.split('_').slice(2).join('_') : (chan || 'general'));
+  document.getElementById('chat-input').placeholder = placeholderLabel;
+}
+
+// ---------- Typing indicators ----------
+const typingUsers = new Map(); // userId => timestamp
+function showTyping(userId, userName) {
+  typingUsers.set(userId, Date.now());
+  renderTypingIndicator();
+  setTimeout(() => { typingUsers.delete(userId); renderTypingIndicator(); }, 5000);
+}
+function renderTypingIndicator() {
+  const el = document.getElementById('header-typing');
+  if (!el) return;
+  const now = Date.now();
+  const active = [...typingUsers.entries()].filter(([, ts]) => now - ts < 5000);
+  if (active.length === 0) {
+    el.textContent = '';
+  } else if (active.length === 1) {
+    el.textContent = active[0][1] ? '...' : '';
+    // Show username
+    const name = active[0][0];
+    el.textContent = name + ' is typing...';
+  } else {
+    el.textContent = active.length + ' people are typing...';
+  }
+}
+window.showTyping = showTyping;
+
+function serverMenu() { openServerModal(); }
+
+function openServerModal() {
+  document.getElementById('sm-name').value = '';
+  document.getElementById('sm-code').value = '';
+  document.getElementById('sm-result').textContent = '';
+  showServerTab('create');
+  const m = document.getElementById('server-modal');
+  m.style.display = 'flex';
+  requestAnimationFrame(() => { m.classList.add('visible'); m.querySelector('.modal-card').classList.add('visible'); });
+}
+
+function closeServerModal() {
+  const m = document.getElementById('server-modal');
+  m.classList.remove('visible');
+  const c = m.querySelector('.modal-card');
+  if (c) c.classList.remove('visible');
+  setTimeout(() => { m.style.display = 'none'; }, 180);
+}
+
+function showServerTab(tab) {
+  document.getElementById('sm-create').style.display = tab === 'create' ? 'block' : 'none';
+  document.getElementById('sm-join').style.display = tab === 'join' ? 'block' : 'none';
+  document.getElementById('sm-create-tab').style.background = tab === 'create' ? 'var(--bl)' : 'var(--bg-t)';
+  document.getElementById('sm-create-tab').style.color = tab === 'create' ? 'var(--accent-contrast)' : 'var(--txt)';
+  document.getElementById('sm-join-tab').style.background = tab === 'join' ? 'var(--bl)' : 'var(--bg-t)';
+  document.getElementById('sm-join-tab').style.color = tab === 'join' ? 'var(--accent-contrast)' : 'var(--txt)';
+}
+
+async function createServerFromModal() {
+  const name = document.getElementById('sm-name').value.trim();
+  if (!name) { appAlert('Enter a server name'); return; }
+
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if (!uid || !user) { appAlert('You must be signed in to create a server'); return; }
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const ref = await addDoc(collection(db, 'servers'), {
+    name,
+    owner: user,
+    ownerUid: uid,
+    inviteCode: code,
+    members: [user],
+    memberUids: [uid],
+    admins: [user],
+    adminUids: [uid],
+    banned: [],
+    welcomeMessage: '',
+    public: false,
+    channels: [{ name: 'general', id: 'general' }],
+    createdAt: serverTimestamp()
+  });
+
+  await setDoc(doc(db, 'invites', code), { serverId: ref.id, createdBy: user, createdAt: serverTimestamp() });
+  document.getElementById('sm-result').textContent = 'Created! Invite code: ' + code;
+  if (typeof awardBadge === 'function') awardBadge('server-creator');
+  await loadServers();
+  switchServer(ref.id);
+}
+
+async function joinServerFromModal() {
+  const code = document.getElementById('sm-code').value.trim();
+  if (!code) { appAlert('Enter an invite code'); return; }
+  await joinServer(code);
+  closeServerModal();
+}
+
+window.deleteServerMessages = async (server) => {
+  const channelNames = new Set(['general', ...(server.channels || []).map(channel => channel.name).filter(Boolean)]);
+  for (const channelName of channelNames) {
+    const messages = await getDocs(query(
+      collection(db, 'messages'),
+      where('channel', '==', `srv_${server.id}_${channelName}`)
+    ));
+    for (const message of messages.docs) {
+      await deleteDoc(message.ref);
+    }
+  }
+};
+
+window.openServerModal = openServerModal;
+window.closeServerModal = closeServerModal;
+window.showServerTab = showServerTab;
+window.createServerFromModal = createServerFromModal;
+window.joinServerFromModal = joinServerFromModal;
+
+async function createServer() {
+  const name = await appPrompt('Server name:');
+  if (!name) return;
+
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if (!uid || !user) { appAlert('You must be signed in to create a server'); return; }
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const ref = await addDoc(collection(db, 'servers'), {
+    name,
+    owner: user,
+    ownerUid: uid,
+    inviteCode: code,
+    members: [user],
+    memberUids: [uid],
+    admins: [user],
+    adminUids: [uid],
+    banned: [],
+    welcomeMessage: '',
+    public: false,
+    channels: [{ name: 'general', id: 'general' }],
+    createdAt: serverTimestamp()
+  });
+
+  await setDoc(doc(db, 'invites', code), { serverId: ref.id, createdBy: user, createdAt: serverTimestamp() });
+  appAlert('Server created! Invite code: ' + code);
+  if (typeof awardBadge === 'function') awardBadge('server-creator');
+  await loadServers();
+  switchServer(ref.id);
+}
+
+async function joinServer(codeParam) {
+  const code = (codeParam || await appPrompt('Invite code:') || '').trim();
+  if (!code) return;
+
+  // Look up invite code in separate invites collection (readable by any auth user)
+  const inviteSnap = await getDoc(doc(db, 'invites', code.toUpperCase()));
+  if (!inviteSnap.exists()) { appAlert('Invalid code'); return; }
+  const inviteData = inviteSnap.data();
+  const serverId = inviteData.serverId;
+  // Now read the server doc
+  const serverSnap = await getDoc(doc(db, 'servers', serverId));
+  if (!serverSnap.exists()) { appAlert('Server not found'); return; }
+  const s = serverSnap;
+  const data = s.data();
+
+  const members = Array.isArray(data.members) ? data.members : [];
+  const memberUids = Array.isArray(data.memberUids) ? data.memberUids : [];
+
+  if (members.includes(user)) {
+    switchServer(s.id);
+    return;
+  }
+  if (Array.isArray(data.banned) && data.banned.some(b => (typeof b === 'string' ? b === user : (b && b.user === user)))) {
+    appAlert('You are banned from this server.');
+    const appeal = await appConfirm('Would you like to submit a ban appeal?');
+    if (appeal) {
+      const reason = await appPrompt('Appeal reason:');
+      if (reason) {
+        try {
+          await addDoc(collection(db, 'banAppeals'), { serverId: s.id, user, reason, status: 'pending', timestamp: serverTimestamp() });
+          appAlert('Your appeal has been submitted.');
+        } catch (e) { appAlert('Failed to submit appeal.'); }
+      }
+    }
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, 'servers', s.id), {
+      members: [...members, user],
+      memberUids: Array.from(new Set([...memberUids, (auth.currentUser && auth.currentUser.uid) || null].filter(Boolean))),
+      admins: Array.isArray(data.admins) ? data.admins : [],
+      adminUids: Array.isArray(data.adminUids) ? data.adminUids : []
+    });
+    console.log('joinServer: updateDoc succeeded');
+  } catch (e) {
+    console.error('joinServer: updateDoc failed:', e);
+    appAlert('Join failed: ' + (e.message || String(e)));
+    return;
+  }
+  console.log('joinServer: about to call loadServers');
+  try {
+    await loadServers();
+    console.log('joinServer: loadServers succeeded');
+  } catch (e) {
+    console.error('joinServer: loadServers failed:', e);
+    appAlert('Load servers failed: ' + (e.message || String(e)));
+    return;
+  }
+  console.log('joinServer: about to call switchServer');
+  try {
+    switchServer(s.id);
+    console.log('joinServer: switchServer called');
+  } catch (e) {
+    console.error('joinServer: switchServer failed:', e);
+    appAlert('Switch server failed: ' + (e.message || String(e)));
+  }
+}
+
+async function loadServers() {
+  const snap = await getDocs(query(collection(db, 'servers'), where('members', 'array-contains', user)));
+  servers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  window.servers = servers;
+  window.serverEmojis = window.serverEmojis || {};
+  window.serverStickers = window.serverStickers || {};
+  servers.forEach(s => { window.serverEmojis[s.id] = Array.isArray(s.emojis) ? s.emojis : []; window.serverStickers[s.id] = Array.isArray(s.stickers) ? s.stickers : []; });
+  renderServerList();
+}
+
+function renderServerList() {
+  const el = document.getElementById('server-list');
+  el.innerHTML = servers.map(s => {
+    const active = currentServer === s.id;
+    const iconStyle = s.icon ? `background-image:url('${s.icon}');background-size:cover;background-position:center;` : '';
+    const accentStyle = s.accent ? `border-left:3px solid ${escHtml(s.accent)};` : '';
+    // Calculate unread count for server
+    let unread = 0;
+    if (window._unreadCounts) {
+      (s.channels || []).forEach(c => {
+        const key = 'srv_' + s.id + '_' + c.name;
+        unread += (window._unreadCounts[key] || 0);
+      });
+    }
+    const badge = unread > 0 ? '<span class="badge" style="position:absolute;top:2px;right:2px;background:var(--bl);color:#000;border-radius:10px;font-size:10px;padding:1px 4px;">' + unread + '</span>' : '';
+    return `<div class="si ${active ? 'active' : ''}" onclick="switchServer('${s.id}')" oncontextmenu="showServerCtx(event,'${s.id}')" title="${escHtml(s.name)}" style="position:relative;${iconStyle}${accentStyle}">${s.icon ? '' : escHtml(s.name)[0].toUpperCase()}${badge}</div>`;
+  }).join('');
+}
+
+let ctxServerId = null;
+
+function getServerRole(server) {
+  const admins = Array.isArray(server && server.admins) ? server.admins : [];
+  const adminUids = Array.isArray(server && server.adminUids) ? server.adminUids : [];
+  const uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : null;
+  const isOwner = !!server && server.owner === user;
+  // Prefer UID-based check; fall back to username-based for legacy servers
+  const isAdminByUid = uid ? adminUids.includes(uid) : false;
+  const isAdminByName = admins.includes(user);
+  const isAdmin = isOwner || isAdminByUid || (adminUids.length === 0 && isAdminByName);
+  return { isOwner, isAdmin };
+}
+
+function getServerById(id) {
+  if (!id || !Array.isArray(servers)) return null;
+  return servers.find(s => s.id === id) || null;
+}
+
+async function logAudit(serverId, action, target, details) {
+  try {
+    await addDoc(collection(db, 'auditLog'), {
+      serverId: serverId || null,
+      actor: user,
+      action: action,
+      target: target || null,
+      details: details || '',
+      timestamp: serverTimestamp()
+    });
+  } catch (e) { console.error('audit log failed', e); }
+}
+window.logAudit = logAudit;
+
+function canManageServer(server) {
+  if (!server || !user) return false;
+  const { isOwner, isAdmin } = getServerRole(server);
+  return isOwner || isAdmin;
+}
+
+async function deleteChannel(sid, cname) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can delete channels.'); return; }
+  if (cname === 'general') { appAlert('The general channel cannot be deleted.'); return; }
+  if (!(await appConfirm('Delete #' + cname + '? Messages in this channel will no longer be accessible.'))) return;
+  const channels = (s.channels || []).filter(c => c.name !== cname);
+  await updateDoc(doc(db, 'servers', sid), { channels });
+  logAudit(sid, 'channel.delete', cname, 'Channel deleted');
+  await loadServers();
+  if (currentServer === sid) switchServer(sid);
+}
+
+async function channelAction(sid, encodedName, action) {
+  const cname = decodeURIComponent(encodedName);
+  if (action === 'rename') return renameChannel(sid, cname);
+  if (action === 'delete') return deleteChannel(sid, cname);
+  if (action === 'access') return manageChannelAccess(sid, cname);
+  if (action === 'up' || action === 'down') return moveChannel(sid, cname, action);
+}
+
+async function manageChannelAccess(sid, cname) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can manage channel access.'); return; }
+  const channel = (s.channels || []).find(c => c.name === cname);
+  if (!channel) return;
+  const current = channel.private ? (channel.allowedUsers || []).join(', ') : '';
+  const input = await appPrompt('Allowed usernames (comma-separated). Leave blank to make the channel public:', current);
+  if (input === null) return;
+  const names = [...new Set(input.split(',').map(name => name.trim()).filter(Boolean))];
+  const invalid = names.filter(name => !(s.members || []).includes(name));
+  if (invalid.length) { appAlert('These users are not server members: ' + invalid.join(', ')); return; }
+  const allowedUsers = [...new Set([s.owner, ...(s.admins || []), ...names])];
+  const channelAccess = { ...(s.channelAccess || {}) };
+  if (!names.length) {
+    delete channelAccess[cname];
+    channel.private = false;
+    delete channel.allowedUsers;
+  } else {
+    const allowedUids = [];
+    for (const name of allowedUsers) {
+      const snap = await getDocs(query(collection(db, 'users'), where('user', '==', name)));
+      const uid = snap.docs[0]?.data()?.uid;
+      if (uid) allowedUids.push(uid);
+    }
+    channel.private = true;
+    channel.allowedUsers = allowedUsers;
+    channelAccess[cname] = { allowedUids };
+  }
+  await updateDoc(doc(db, 'servers', sid), { channels: s.channels, channelAccess });
+  await loadServers();
+  if (currentServer === sid) switchServer(sid);
+}
+
+function renderChannelItem(server, channel) {
+  console.log('renderChannelItem called with channel:', channel.name, 'type:', channel.type);
+  const active = chan === ('srv_' + server.id + '_' + channel.name);
+  const canManage = canManageServer(server);
+  const encodedName = encodeURIComponent(channel.name);
+  const controls = canManage
+    ? `<span class="channel-controls" onclick="event.stopPropagation()"><button type="button" onclick="channelAction('${server.id}','${encodedName}','rename')" title="Rename channel"><img src="/icons/edit.svg" alt="Rename channel"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','access')" title="Manage channel access"><img src="/icons/lock.svg" alt="Manage channel access"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','up')" title="Move up"><img src="/icons/arrow-up.svg" alt="Move up"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','down')" title="Move down"><img src="/icons/arrow-down.svg" alt="Move down"></button>${channel.name !== 'general' ? `<button type="button" onclick="channelAction('${server.id}','${encodedName}','delete')" title="Delete channel"><img src="/icons/trash.svg" alt="Delete channel"></button>` : ''}</span>`
+    : '';
+  const voiceIcon = channel.type === 'voice' ? '<img class="channel-icon" src="/icons/voice.svg" alt="" aria-hidden="true"> ' : '';
+  const voiceJoin = channel.type === 'voice' ? `<button style="margin-left:4px;background:transparent;border:none;color:var(--bl);cursor:pointer;font-size:11px;" onclick="joinVoiceChannel('${server.id}','${escHtml(channel.name)}')" title="Join voice"><img class="channel-icon" src="/icons/voice.svg" alt="" aria-hidden="true"> Join</button>` : '';
+  const privateIcon = channel.private ? '<img class="channel-icon" src="/icons/lock.svg" alt="" aria-hidden="true"> ' : '';
+  const announcementIcon = channel.announcement ? '<img class="channel-icon" src="/icons/note.svg" alt="" aria-hidden="true"> ' : '';
+  const result = `<div class="channel-row" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;"><button class="cb ${active ? 'active' : ''}" onclick="switchServerChannel('${server.id}','${escHtml(channel.name)}')" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;">${privateIcon}${announcementIcon}${voiceIcon}# ${escHtml(channel.name)}</button>${voiceJoin}${unreadBadge('srv_' + server.id + '_' + channel.name)}${controls}</div>`;
+  console.log('renderChannelItem returning:', result.substring(0, 100));
+  return result;
+}
+
+function showServerCtx(e, sid) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxServerId = sid;
+
+  const m = document.getElementById('server-ctx');
+  m.dataset.serverId = sid;
+
+  const s = getServerById(sid);
+  const canManage = s && canManageServer(s);
+
+  document.getElementById('ctx-invite').style.display = 'block';
+  document.getElementById('ctx-settings').style.display = canManage ? 'block' : 'none';
+  document.getElementById('ctx-leave').style.display = 'block';
+  m.style.display = 'block';
+  m.style.left = e.clientX + 'px';
+  m.style.top = e.clientY + 'px';
+}
+
+function hideServerCtx() {
+  document.getElementById('server-ctx').style.display = 'none';
+}
+
+document.addEventListener('click', hideServerCtx);
+
+document.addEventListener('click', (e) => {
+  const p = document.getElementById('reaction-picker');
+  if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('[data-action="react"]')) hideReactionPicker();
+});
+
+function openServerSettings(sid) {
+  if (sid) ctxServerId = sid;
+  hideServerCtx();
+
+  const s = getServerById(ctxServerId || sid);
+  if (!s) return;
+
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isAdmin) {
+    if (typeof appAlert === 'function') appAlert('Only the server owner or admins can access settings.');
+    return;
+  }
+
+  document.getElementById('ss-name').value = s.name || '';
+  document.getElementById('ss-desc').value = s.description || '';
+  const ssRules = document.getElementById('ss-rules');
+  if (ssRules) ssRules.value = (s.rules || []).join('\n');
+  const ssWelcome = document.getElementById('ss-welcome');
+  if (ssWelcome) ssWelcome.value = s.welcomeMessage || '';
+  document.getElementById('ss-icon-url').value = s.icon || '';
+  document.getElementById('ss-banner-url').value = s.banner || '';
+  document.getElementById('ss-accent').value = s.accent || '#57f287';
+  const ssPublic = document.getElementById('ss-public');
+  if (ssPublic) ssPublic.checked = !!s.public;
+
+  const ssEmojis = document.getElementById('ss-emojis');
+  if (ssEmojis) ssEmojis.value = (s.emojis || []).map(e => e.name + ':' + e.url).join('\n');
+  const ssStickers = document.getElementById('ss-stickers');
+  if (ssStickers) ssStickers.value = (s.stickers || []).map(e => e.name + ':' + e.url).join('\n');
+  if (typeof viewEvents === 'function') viewEvents();
+
+  document.getElementById('ss-preview').innerHTML = s.banner
+    ? `<img src="${escHtml(s.banner)}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;">`
+    : '';
+
+  const adminsSection = document.getElementById('ss-admins-section');
+  const deleteBtn = document.getElementById('ss-delete-btn');
+
+  if (isOwner) {
+    adminsSection.style.display = 'block';
+    deleteBtn.style.display = 'inline-block';
+    renderMembersList(s);
+  } else {
+    adminsSection.style.display = 'none';
+    deleteBtn.style.display = 'none';
+  }
+
+  ['ss-name', 'ss-desc', 'ss-icon-url', 'ss-banner-url', 'ss-icon-file', 'ss-banner-file'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+
+  const ssm = document.getElementById('server-settings-modal');
+  if (ssm) {
+    ssm.style.display = 'flex';
+    requestAnimationFrame(() => {
+      ssm.classList.add('visible');
+      const card = ssm.querySelector('.modal-card');
+      if (card) card.classList.add('visible');
+    });
+  }
+}
+
+function renderMembersList(s) {
+  const el = document.getElementById('ss-members');
+  if (!el || !s) return;
+
+  const admins = new Set(Array.isArray(s.admins) ? s.admins : []);
+  const members = Array.isArray(s.members) ? s.members : [];
+
+  el.innerHTML = members.map(m => {
+    const isOwner = (m === s.owner);
+    const isAdmin = admins.has(m);
+    let badge = isOwner ? ' (Owner)' : (isAdmin ? ' (Admin)' : '');
+    let btn = '';
+
+    if (s.owner === user && !isOwner) {
+      btn = isAdmin
+        ? `<button onclick="toggleAdmin('${escHtml(m)}', false)" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--danger);color:var(--white);cursor:pointer;">Remove Admin</button>`
+        : `<button onclick="toggleAdmin('${escHtml(m)}', true)" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--bl);color:var(--accent-contrast);cursor:pointer;">Make Admin</button>`;
+      btn += ` <button onclick="kickMember('${escHtml(m)}')" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--danger);color:var(--white);cursor:pointer;">Kick</button>`;
+      btn += ` <button onclick="banMember('${escHtml(m)}')" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--danger);color:var(--white);cursor:pointer;">Ban</button>`;
+      btn += ` <button onclick="transferOwnership('${escHtml(m)}')" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--yellow);color:var(--accent-contrast);cursor:pointer;">Transfer Owner</button>`;
+    } else if ((typeof getServerRole === 'function' && getServerRole(s).isAdmin) && !isOwner) {
+      btn = `<button onclick="kickMember('${escHtml(m)}')" style="font-size:11px;padding:2px 8px;border:none;border-radius:4px;background:var(--danger);color:var(--white);cursor:pointer;">Kick</button>`;
+    }
+
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--bg-t);font-size:12px;color:var(--txt);"><span>${escHtml(m)}${badge}</span>${btn}</div>`;
+  }).join('');
+  // Show banned users
+  const banned = Array.isArray(s.banned) ? s.banned : [];
+  if (banned.length && (s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin))) {
+    el.innerHTML += '<div style="margin-top:8px;font-size:11px;color:var(--mut);">Banned:</div>' + banned.map(b => {
+      const name = (typeof b === 'string') ? b : (b && b.user) || '';
+      const reason = (typeof b === 'string') ? '' : (b && b.reason) || '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0;font-size:12px;color:var(--mut);"><span>${escHtml(name)}${reason ? ' \u2014 ' + escHtml(reason) : ''}</span><button onclick="unbanMember('${escHtml(name)}')" style="font-size:10px;padding:2px 6px;border:none;border-radius:4px;background:var(--bl);color:var(--accent-contrast);cursor:pointer;">Unban</button></div>`;
+    }).join('');
+  }
+}
+
+async function renameChannel(sid, cname) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can rename channels.'); return; }
+  const newName = await appPrompt('New channel name:', cname);
+  if (!newName || newName === cname) return;
+  const channels = s.channels || [];
+  if (channels.some(c => c.name === newName)) { appAlert('Channel already exists'); return; }
+  const ch = channels.find(c => c.name === cname);
+  if (ch) ch.name = newName;
+  await updateDoc(doc(db, 'servers', sid), { channels });
+  await loadServers();
+  if (currentServer === sid) switchServerChannel(sid, newName);
+  appAlert('Channel renamed to ' + newName + '.');
+}
+
+async function setChannelTopic(sid, cname) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can set channel topics.'); return; }
+  const ch = (s.channels || []).find(c => c.name === cname);
+  const currentTopic = ch && ch.topic ? ch.topic : '';
+  const topic = await appPrompt('Channel topic:', currentTopic);
+  if (topic === null) return;
+  if (ch) ch.topic = topic;
+  await updateDoc(doc(db, 'servers', sid), { channels: s.channels });
+  await loadServers();
+  updateHeader();
+}
+
+async function toggleAdmin(member, makeAdmin) {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+
+  if (s.owner !== user) {
+    appAlert('Only the server owner can manage admin roles.');
+    return;
+  }
+
+  if (member === s.owner) {
+    appAlert('The owner cannot be changed through admin roles.');
+    return;
+  }
+
+  if (!Array.isArray(s.members) || !s.members.includes(member)) {
+    appAlert('That user is not a member of this server.');
+    return;
+  }
+
+  const admins = new Set(Array.isArray(s.admins) ? s.admins : []);
+  const adminUids = new Set(Array.isArray(s.adminUids) ? s.adminUids : []);
+  // Find the member's UID from memberUids (parallel to members array)
+  const memberIdx = (s.members || []).indexOf(member);
+  const memberUid = memberIdx >= 0 && Array.isArray(s.memberUids) ? s.memberUids[memberIdx] : null;
+
+  if (makeAdmin) {
+    admins.add(member);
+    if (memberUid) adminUids.add(memberUid);
+  } else {
+    admins.delete(member);
+    if (memberUid) adminUids.delete(memberUid);
+  }
+
+  await updateDoc(doc(db, 'servers', ctxServerId), { admins: Array.from(admins), adminUids: Array.from(adminUids) });
+  await loadServers();
+
+  const updated = getServerById(ctxServerId);
+  if (updated) renderMembersList(updated);
+}
+
+async function deleteServer() {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+
+  if (s.owner !== user) {
+    appAlert('Only the owner can delete the server');
+    return;
+  }
+
+  if (!(await appConfirm('Delete server "' + s.name + '"? This cannot be undone.'))) return;
+
+  await window.deleteServerMessages(s);
+  logAudit(ctxServerId, 'server.delete', s.name, 'Server deleted');
+  await deleteDoc(doc(db, 'servers', ctxServerId));
+  if (currentServer === ctxServerId) { currentServer = null; chan = null; mode = 'channels'; dmWith = null; }
+  await loadServers();
+
+  if (currentServer) switchServer(currentServer);
+  else if (servers.length > 0) { switchServer(servers[0].id); }
+  else {
+    document.querySelector('.sb h3').textContent = 'Channels';
+    document.getElementById('server-banner').style.display = 'none';
+    document.querySelector('.ch').innerHTML = `<div class="cat">Servers</div><div class="rs-empty" style="padding:8px;">Select a server from the rail</div>`;
+    updateHeader();
+    listen();
+  }
+}
+
+window.deleteServer = deleteServer;
+window.createWebhook = async () => {
+  const sid = ctxServerId || currentServer;
+  const s = getServerById(sid);
+  if (!s) { appAlert('No server selected.'); return; }
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('No permission.'); return; }
+  const name = await appPrompt('Webhook name:', 'Webhook');
+  if (name === null) return;
+  const channels = (s.channels || []).map(c => c.name);
+  const cname = await appPrompt('Channel name (one of: ' + channels.join(', ') + '):', channels[0] || 'general');
+  if (!cname || !channels.includes(cname)) { appAlert('Invalid channel.'); return; }
+  const token = 'wh_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  try {
+    await addDoc(collection(db, 'webhooks'), { serverId: sid, channel: cname, name: name || 'Webhook', token, creator: user, createdAt: serverTimestamp() });
+    appAlert('Webhook created. Token: ' + token + '\\nSave this token; it will not be shown again.');
+    viewWebhooks();
+  } catch (e) { console.error(e); appAlert('Failed to create webhook.'); }
+};
+window.viewBanAppeals = async () => {
+  const sid = ctxServerId || currentServer;
+  const el = document.getElementById('ss-appeals');
+  if (!el) return;
+  if (!sid) { el.textContent = 'No server selected.'; return; }
+  try {
+    const snap = await getDocs(query(collection(db, 'banAppeals'), where('serverId', '==', sid)));
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!rows.length) { el.textContent = 'No appeals.'; return; }
+    el.innerHTML = rows.map(a => '<div style="padding:4px 0;border-bottom:1px solid var(--border);"><b>' + escHtml(a.user) + '</b>: ' + escHtml(a.reason || '') + '<div style="font-size:10px;color:var(--mut);">' + (a.status || 'pending') + '</div>' +
+      (a.status !== 'resolved' ? '<button type="button" class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-top:4px;" onclick="resolveBanAppeal(\'' + a.id + '\')">Mark Resolved</button>' : '') +
+      '</div>').join('');
+  } catch (e) { el.textContent = 'Failed to load appeals.'; }
+};
+window.resolveBanAppeal = async (id) => {
+  try { await updateDoc(doc(db, 'banAppeals', id), { status: 'resolved' }); viewBanAppeals(); } catch (e) { appAlert('Failed.'); }
+};
+
+window.viewWebhooks = async () => {
+  const sid = ctxServerId || currentServer;
+  const el = document.getElementById('ss-webhooks');
+  if (!el) return;
+  if (!sid) { el.textContent = 'No server selected.'; return; }
+  try {
+    const snap = await getDocs(query(collection(db, 'webhooks'), where('serverId', '==', sid)));
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!rows.length) { el.textContent = 'No webhooks yet.'; return; }
+    el.innerHTML = rows.map(w => '<div style="padding:4px 0;border-bottom:1px solid var(--border);"><b>' + escHtml(w.name) + '</b> \u2192 #' + escHtml(w.channel) + '<div style="font-size:10px;color:var(--mut);word-break:break-all;">token: ' + escHtml(w.token) + '</div><button type="button" class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-top:4px;" onclick="deleteWebhook(\'' + w.id + '\')">Delete</button></div>').join('');
+  } catch (e) { el.textContent = 'Failed to load webhooks.'; }
+};
+window.deleteWebhook = async (id) => {
+  try { await deleteDoc(doc(db, 'webhooks', id)); viewWebhooks(); } catch (e) { appAlert('Failed to delete webhook.'); }
+};
+window.postWebhookMessage = async (token, text) => {
+  try {
+    const snap = await getDocs(query(collection(db, 'webhooks'), where('token', '==', token)));
+    if (snap.empty) { return false; }
+    const w = snap.docs[0].data();
+    const channel = 'srv_' + w.serverId + '_' + w.channel;
+    await addDoc(collection(db, 'messages'), { text: text || '', user: w.name, uid: null, channel, pfp: '', timestamp: serverTimestamp(), webhook: true, webhookToken: token });
+    return true;
+  } catch (e) { console.error(e); return false; }
+};
+window.viewWebhooks();
+
+window.viewAuditLog = async () => {
+  const sid = ctxServerId || currentServer;
+  const el = document.getElementById('ss-audit');
+  if (!el) return;
+  if (!sid) { el.textContent = 'No server selected.'; return; }
+  try {
+    const snap = await getDocs(query(collection(db, 'auditLog'), where('serverId', '==', sid)));
+    const rows = snap.docs.map(d => d.data()).sort((a,b) => (b.timestamp?.toMillis?.()||0) - (a.timestamp?.toMillis?.()||0)).slice(0, 50);
+    if (!rows.length) { el.textContent = 'No audit entries yet.'; return; }
+    el.innerHTML = rows.map(r => {
+      const t = r.timestamp && r.timestamp.toDate ? r.timestamp.toDate().toLocaleString() : '';
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--border);"><b>' + escHtml(r.actor || '') + '</b> ' + escHtml(r.action || '') + (r.target ? ' \u2192 ' + escHtml(r.target) : '') + (r.details ? ' \u2014 ' + escHtml(r.details) : '') + '<div style="font-size:10px;color:var(--mut);">' + escHtml(t) + '</div></div>';
+    }).join('');
+  } catch (e) { el.textContent = 'Failed to load audit log.'; console.error(e); }
+};
+async function kickMember(member) {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('No permission.'); return; }
+  if (member === s.owner) { appAlert('Cannot kick the owner.'); return; }
+  if (!(await appConfirm('Kick ' + member + ' from the server?'))) return;
+  const members = (s.members || []).filter(m => m !== member);
+  const memberUids = (s.memberUids || []).filter((_, i) => (s.members || [])[i] !== member);
+  await updateDoc(doc(db, 'servers', ctxServerId), { members, memberUids });
+  logAudit(ctxServerId, 'member.kick', member, 'Kicked from server');
+  await loadServers();
+  if (currentServer === ctxServerId) switchServer(ctxServerId);
+  appAlert(member + ' has been kicked.');
+}
+
+async function banMember(member) {
+  let banReason = '';
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('No permission.'); return; }
+  if (member === s.owner) { appAlert('Cannot ban the owner.'); return; }
+  if (!(await appConfirm('Ban ' + member + ' from the server? They will not be able to rejoin.'))) return;
+  banReason = await appPrompt('Ban reason (optional):') || '';
+  const members = (s.members || []).filter(m => m !== member);
+  const memberUids = (s.memberUids || []).filter((_, i) => (s.members || [])[i] !== member);
+  const banned = Array.isArray(s.banned) ? [...s.banned, { user: member, reason: banReason || 'No reason provided', bannedAt: serverTimestamp() }] : [{ user: member, reason: banReason || 'No reason provided', bannedAt: serverTimestamp() }];
+  await updateDoc(doc(db, 'servers', ctxServerId), { members, memberUids, banned });
+  logAudit(ctxServerId, 'member.ban', member, 'Reason: ' + (banReason || 'No reason provided'));
+  await loadServers();
+  if (currentServer === ctxServerId) switchServer(ctxServerId);
+  appAlert(member + ' has been banned.');
+}
+
+async function unbanMember(member) {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('No permission.'); return; }
+  const banned = (s.banned || []).filter(m => (typeof m === 'string' ? m !== member : (m && m.user !== member)));
+  await updateDoc(doc(db, 'servers', ctxServerId), { banned });
+  await loadServers();
+  appAlert(member + ' has been unbanned.');
+}
+
+async function transferOwnership(newOwner) {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+  if (s.owner !== user) { appAlert('Only the server owner can transfer ownership.'); return; }
+  if (newOwner === user) { appAlert('You are already the owner.'); return; }
+  if (!(s.members || []).includes(newOwner)) { appAlert('That user is not a member of this server.'); return; }
+  if (!(await appConfirm('Transfer ownership to ' + newOwner + '? This cannot be undone.'))) return;
+  const memberSnap = await getDocs(query(collection(db, 'users'), where('user', '==', newOwner)));
+  const memberUid = memberSnap.docs[0]?.data()?.uid;
+  if (!memberUid) { appAlert('Could not verify the new owner account.'); return; }
+  const admins = (s.admins || []).filter(member => member !== newOwner);
+  const adminUids = (s.adminUids || []).filter(uid => uid !== memberUid);
+  await updateDoc(doc(db, 'servers', ctxServerId), { owner: newOwner, ownerUid: memberUid, admins, adminUids });
+  await loadServers();
+  if (currentServer === ctxServerId) switchServer(ctxServerId);
+  appAlert('Ownership transferred to ' + newOwner + '.');
+}
+
+window.toggleAdmin = toggleAdmin;
+window.kickMember = kickMember;
+window.banMember = banMember;
+window.unbanMember = unbanMember;
+async function togglePublicServer() {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+  if (s.owner !== user) { appAlert('Only the owner can change server visibility.'); return; }
+  const isPublic = !s.public;
+  await updateDoc(doc(db, 'servers', ctxServerId), { public: isPublic });
+  await loadServers();
+  appAlert(isPublic ? 'Server is now public and discoverable.' : 'Server is now private.');
+}
+
+window.transferOwnership = transferOwnership;
+window.viewServerRules = () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) { appAlert('No server selected.'); return; }
+  if (s.rules && s.rules.length) {
+    appAlert('Server Rules:\n\n' + s.rules.map((r, i) => (i+1) + '. ' + r).join('\n'));
+  } else {
+    appAlert('No rules set for this server.');
+  }
+};
+
+// ---------- Server Events ----------
+window.createEvent = async () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) { appAlert('No server selected.'); return; }
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only owner or admins can create events.'); return; }
+  const name = await appPrompt('Event name:');
+  if (!name) return;
+  const desc = await appPrompt('Event description:');
+  const dateStr = await appPrompt('Event date/time (e.g. 2026-11-01 18:00):');
+  if (!dateStr) return;
+  const eventDate = new Date(dateStr);
+  if (isNaN(eventDate.getTime())) { appAlert('Invalid date.'); return; }
+  try {
+    await addDoc(collection(db, 'events'), {
+      serverId: s.id,
+      name: name.trim(),
+      description: (desc || '').trim(),
+      date: eventDate.toISOString(),
+      creator: user,
+      attendees: [user],
+      timestamp: serverTimestamp()
+    });
+    appAlert('Event created!');
+    viewEvents();
+  } catch (e) { appAlert('Failed to create event.'); }
+};
+
+window.viewEvents = async () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) return;
+  const container = document.getElementById('ss-events');
+  if (!container) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'events'), where('serverId', '==', s.id)));
+    const events = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!events.length) { container.innerHTML = '<div style="color:var(--mut);">No events.</div>'; return; }
+    container.innerHTML = events.map(e => {
+      const date = new Date(e.date);
+      const dateStr = date.toLocaleString();
+      const attending = (e.attendees || []).includes(user);
+      return `<div style="padding:6px;border-bottom:1px solid var(--border);">
+        <div style="font-weight:600;color:var(--bright);">${escHtml(e.name)}</div>
+        <div style="font-size:11px;color:var(--mut);">${escHtml(dateStr)} · ${e.attendees.length} attending</div>
+        ${e.description ? '<div style="font-size:11px;color:var(--mut);margin-top:2px;">' + escHtml(e.description) + '</div>' : ''}
+        <button class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-top:4px;" onclick="rsvpEvent('${e.id}', ${attending})">${attending ? 'Leave' : 'RSVP'}</button>
+      </div>`;
+    }).join('');
+  } catch (e) { container.innerHTML = '<div style="color:var(--danger);">Failed to load events.</div>'; }
+};
+
+window.rsvpEvent = async (eventId, isAttending) => {
+  if (!eventId) return;
+  try {
+    const ref = doc(db, 'events', eventId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    let attendees = data.attendees || [];
+    if (isAttending) {
+      attendees = attendees.filter(a => a !== user);
+    } else {
+      if (!attendees.includes(user)) attendees.push(user);
+    }
+    await updateDoc(ref, { attendees });
+    viewEvents();
+  } catch (e) { appAlert('Failed to RSVP.'); }
+};
+
+// Load events when server settings opens
+const _origOpenSS = window.openServerSettings;
+// We'll hook into openServerSettings via a wrapper
+const _origOpenServerSettings = (typeof openServerSettings === 'function') ? openServerSettings : null;
+
+// ---------- Server Templates ----------
+window.saveServerTemplate = async () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) { appAlert('No server selected.'); return; }
+  const { isOwner } = getServerRole(s);
+  if (!isOwner) { appAlert('Only the owner can save templates.'); return; }
+  const template = {
+    name: s.name,
+    description: s.description || '',
+    icon: s.icon || '',
+    banner: s.banner || '',
+    accent: s.accent || '#57f287',
+    channels: (s.channels || []).map(c => ({ name: c.name, private: !!c.private, nsfw: !!c.nsfw, category: c.category || '', topic: c.topic || '', slowMode: c.slowMode || 0 })),
+    emojis: s.emojis || [],
+    stickers: s.stickers || [],
+    rules: s.rules || [],
+    welcomeMessage: s.welcomeMessage || '',
+    savedAt: new Date().toISOString()
+  };
+  try {
+    localStorage.setItem('froggocord-template-' + s.id, JSON.stringify(template));
+    appAlert('Server template saved locally.');
+  } catch (e) { appAlert('Failed to save template.'); }
+};
+
+window.applyServerTemplate = async () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) { appAlert('No server selected.'); return; }
+  const { isOwner } = getServerRole(s);
+  if (!isOwner) { appAlert('Only the owner can apply templates.'); return; }
+  // Find available templates
+  const templates = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('froggocord-template-')) {
+      try { templates.push({ key, data: JSON.parse(localStorage.getItem(key)) }); } catch (e) {}
+    }
+  }
+  if (!templates.length) { appAlert('No saved templates found.'); return; }
+  // Use the first template (or let user choose via prompt)
+  const choice = await appPrompt('Template name to apply (or leave blank for first):');
+  let template = templates[0].data;
+  if (choice) {
+    const found = templates.find(t => t.data.name.toLowerCase().includes(choice.toLowerCase()));
+    if (found) template = found.data;
+  }
+  if (!template) { appAlert('Template not found.'); return; }
+  const confirm = await appConfirm('Apply template "' + template.name + '" to this server? This will update channels, emojis, stickers, rules, and welcome message.');
+  if (!confirm) return;
+  try {
+    await updateDoc(doc(db, 'servers', s.id), {
+      description: template.description,
+      icon: template.icon,
+      banner: template.banner,
+      accent: template.accent,
+      channels: template.channels,
+      emojis: template.emojis,
+      stickers: template.stickers,
+      rules: template.rules,
+      welcomeMessage: template.welcomeMessage
+    });
+    await loadServers();
+    if (currentServer === s.id) switchServer(s.id);
+    appAlert('Template applied!');
+  } catch (e) { appAlert('Failed to apply template.'); }
+};
+
+// ---------- Copy Invite Link ----------
+window.copyInviteLink = (sid) => {
+  const s = getServerById(sid);
+  if (!s || !s.inviteCode) { appAlert('No invite code available.'); return; }
+  const link = window.location.origin + '?join=' + encodeURIComponent(s.inviteCode);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(() => appAlert('Invite link copied!')).catch(() => { prompt('Copy this link:', link); });
+  } else {
+    prompt('Copy this link:', link);
+  }
+};
+
+// ---------- Server Rules Modal ----------
+window.acceptServerRules = () => {
+  const modal = document.getElementById('server-rules-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.showServerRules = async (serverId) => {
+  const s = getServerById(serverId);
+  if (!s || !s.rules || !s.rules.length) return;
+  const key = 'froggocord-rules-accepted-' + serverId;
+  if (localStorage.getItem(key)) return;
+  const modal = document.getElementById('server-rules-modal');
+  const title = document.getElementById('rules-title');
+  const content = document.getElementById('rules-content');
+  if (!modal || !title || !content) return;
+  title.textContent = 'Rules for ' + s.name;
+  content.textContent = s.rules.map((r, i) => (i + 1) + '. ' + r).join('\n');
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.classList.add('visible'); modal.querySelector('.modal-card').classList.add('visible'); });
+  // Mark as accepted after showing (simplified - in production this would be a checkbox)
+  localStorage.setItem(key, '1');
+};
+
+// ---------- Mark All Read ----------
+window.markAllRead = () => {
+  if (!user) return;
+  try {
+    if (window._unreadCounts) {
+      Object.keys(window._unreadCounts).forEach(k => { window._unreadCounts[k] = 0; });
+    }
+    if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderServerList === 'function') renderServerList();
+    appAlert('All messages marked as read.');
+  } catch (e) { console.error('markAllRead failed', e); }
+};
+
+// ---------- Voice Channel Join ----------
+window.joinVoiceChannel = (sid, cname) => {
+  const s = getServerById(sid);
+  if (!s) return;
+  appAlert('Voice channel "' + cname + '" - Voice chat coming soon! (requires WebRTC)');
+};
+
+// ---------- Discover Server Filtering ----------
+window.filterDiscoverServers = () => {
+  const list = document.getElementById('discover-list');
+  if (!list) return;
+  const search = (document.getElementById('discover-search')?.value || '').toLowerCase().trim();
+  const servers = (window._discoverServers || []).filter(s => !search || s.name.toLowerCase().includes(search));
+  if (!servers.length) { list.innerHTML = '<div style="color:var(--mut);padding:12px;">No matching servers.</div>'; return; }
+  list.innerHTML = servers.map(s => `
+    <div style="padding:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+      <div style="width:40px;height:40px;border-radius:8px;background:var(--bg-t);background-image:url('${escHtml(s.icon || '')}');background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--bright);">${s.icon ? '' : escHtml(s.name)[0].toUpperCase()}</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;color:var(--bright);">${escHtml(s.name)}</div>
+        <div style="font-size:11px;color:var(--mut);">${(s.members || []).length} members</div>
+      </div>
+      <button class="btn btn-primary" style="font-size:11px;padding:4px 8px;" onclick="joinServer('${escHtml(s.inviteCode)}'); closeDiscoverModal();">Join</button>
+    </div>
+  `).join('');
+};
+
+// ---------- Jump to First Unread ----------
+window.jumpToFirstUnread = () => {
+  const msgs = document.querySelectorAll('#message-container .msg');
+  for (const m of msgs) {
+    const id = m.dataset.id;
+    if (id && typeof window.isMessageRead === 'function') {
+      // Check if message is unread by comparing timestamp
+      const timeEl = m.querySelector('.msg-time');
+      if (timeEl && timeEl.textContent.includes('NEW')) {
+        m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        m.style.background = 'var(--mention-bg)';
+        setTimeout(() => { m.style.background = ''; }, 2000);
+        return;
+      }
+    }
+  }
+  // Fallback: scroll to bottom
+  const mc = document.getElementById('message-container');
+  if (mc) mc.scrollTop = mc.scrollHeight;
+};
+
+// ---------- Invite Modal ----------
+window.openInviteModal = () => {
+  const modal = document.getElementById('invite-modal');
+  if (!modal) return;
+  const s = getServerById(ctxServerId || currentServer);
+  const input = document.getElementById('invite-code-display');
+  if (input && s) input.value = window.location.origin + '?join=' + (s.inviteCode || '');
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.classList.add('visible'); modal.querySelector('.modal-card').classList.add('visible'); });
+};
+window.closeInviteModal = () => {
+  const modal = document.getElementById('invite-modal');
+  if (!modal) return;
+  modal.classList.remove('visible');
+  modal.querySelector('.modal-card').classList.remove('visible');
+  setTimeout(() => { modal.style.display = 'none'; }, 180);
+};
+
+window.togglePublicServer = togglePublicServer;
+// ---------- Server Stats ----------
+window.viewServerStats = async () => {
+  const s = getServerById(ctxServerId || currentServer);
+  if (!s) { appAlert('No server selected.'); return; }
+  const container = document.getElementById('ss-stats');
+  if (!container) return;
+  try {
+    const memberCount = (s.members || []).length;
+    const channelCount = (s.channels || []).length;
+    const emojiCount = (s.emojis || []).length;
+    const stickerCount = (s.stickers || []).length;
+    // Count messages in server channels
+    let msgCount = 0;
+    try {
+      const snap = await getDocs(query(collection(db, 'messages')));
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.channel && String(data.channel).startsWith('srv_' + s.id + '_')) msgCount++;
+      });
+    } catch (e) {}
+    container.innerHTML = `
+      <div style="padding:6px;border-bottom:1px solid var(--border);"><strong>Members:</strong> ${memberCount}</div>
+      <div style="padding:6px;border-bottom:1px solid var(--border);"><strong>Channels:</strong> ${channelCount}</div>
+      <div style="padding:6px;border-bottom:1px solid var(--border);"><strong>Messages:</strong> ${msgCount}</div>
+      <div style="padding:6px;border-bottom:1px solid var(--border);"><strong>Emojis:</strong> ${emojiCount}</div>
+      <div style="padding:6px;"><strong>Stickers:</strong> ${stickerCount}</div>
+    `;
+  } catch (e) { container.innerHTML = '<div style="color:var(--danger);">Failed to load stats.</div>'; }
+};
+
+function closeServerSettings() {
+  const m = document.getElementById('server-settings-modal');
+  m.classList.remove('visible');
+  const c = m.querySelector('.modal-card');
+  if (c) c.classList.remove('visible');
+  setTimeout(() => { m.style.display = 'none'; }, 180);
+}
+
+async function saveServerSettings() {
+  const s = getServerById(ctxServerId);
+  if (!s) return;
+
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) {
+    appAlert('You do not have permission to save server settings.');
+    return;
+  }
+
+  const name = document.getElementById('ss-name').value.trim() || s.name;
+  const description = document.getElementById('ss-desc').value.trim();
+  const rulesRaw = (document.getElementById('ss-rules').value || '').trim();
+  const rules = rulesRaw ? rulesRaw.split('\n').map(r => r.trim()).filter(Boolean) : [];
+  const welcomeRaw = (document.getElementById('ss-welcome') || {}).value;
+  const welcomeMessage = welcomeRaw ? welcomeRaw.trim() : '';
+  let icon = document.getElementById('ss-icon-url').value.trim();
+  let banner = document.getElementById('ss-banner-url').value.trim();
+  const accent = document.getElementById('ss-accent').value.trim() || '#57f287';
+  const isPublic = document.getElementById('ss-public').checked;
+
+  const iconFile = document.getElementById('ss-icon-file').files[0];
+  const bannerFile = document.getElementById('ss-banner-file').files[0];
+  if (iconFile) icon = await fileToDataUrl(iconFile);
+  if (bannerFile) banner = await fileToDataUrl(bannerFile);
+
+  const emojisRaw = (document.getElementById('ss-emojis').value || '').trim();
+  const emojis = emojisRaw
+    ? emojisRaw.split('\n').map(line => {
+        const idx = line.indexOf(':');
+        if (idx < 0) return null;
+        const name = line.slice(0, idx).trim();
+        const url = line.slice(idx + 1).trim();
+        if (!name || !url) return null;
+        return { name, url };
+      }).filter(Boolean)
+    : [];
+
+  await updateDoc(doc(db, 'servers', ctxServerId), {
+    name,
+    description,
+    icon,
+    banner,
+    accent,
+    emojis,
+    stickers,
+    rules,
+    welcomeMessage,
+    public: isPublic
+  });
+  const stickersRaw = (document.getElementById('ss-stickers').value || '').trim();
+  const stickers = stickersRaw.split('\n').map(line => {
+    const idx = line.indexOf(':');
+    if (idx < 0) return null;
+    const name = line.slice(0, idx).trim();
+    const url = line.slice(idx+1).trim();
+    if (!name || !url) return null;
+    return { name, url };
+  }).filter(Boolean);
+  await updateDoc(doc(db, 'servers', ctxServerId), { stickers });
+
+  await loadServers();
+  if (currentServer === ctxServerId) switchServer(ctxServerId);
+  closeServerSettings();
+}
+
+function fileToDataUrl(file) {
+  return window.convertImageToAvif(file, { maxSize: 1024, maxBytes: 250000 }).then(converted => {
+    if (!converted) throw new Error('This browser cannot encode images as AVIF.');
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(converted);
+    });
+  });
+}
+
+window.leaveServerFromCtx = async () => {
+  const sid = document.getElementById('server-ctx')?.dataset?.serverId || ctxServerId || currentServer;
+  if (!sid) { appAlert('No server selected.'); return; }
+  hideServerCtx();
+  try {
+    await leaveServer(sid);
+  } catch (e) {
+    console.error('leaveServerFromCtx: leaveServer threw:', e);
+    appAlert('Leave failed: ' + (e.message || String(e)));
+  }
+};
+
+async function leaveServer(sid) {
+  hideServerCtx();
+  const targetId = sid || document.getElementById('server-ctx')?.dataset?.serverId || ctxServerId || currentServer;
+  if (!targetId) { appAlert('No server selected.'); return; }
+  ctxServerId = targetId;
+
+
+  let s = getServerById(ctxServerId);
+  if (!s) {
+    try {
+      const snap = await getDoc(doc(db, 'servers', ctxServerId));
+      if (snap.exists()) { s = snap.data(); s.id = ctxServerId; }
+    } catch (e) { console.warn('leaveServer: server fetch failed:', e); }
+  }
+  if (!s) { appAlert('Server not found. Please refresh and try again.'); return; }
+
+
+  if (s.owner === user) {
+    appAlert('The owner must delete the server instead of leaving it.');
+    return;
+  }
+
+  const reason = await appPrompt('Leave reason (optional):');
+
+  if (reason === null) return;
+  const confirmed = await appConfirm('Leave ' + s.name + '?');
+
+  if (!confirmed) return;
+
+  // Skip audit log for now (auditLog collection has no rules)
+
+  const remaining = (s.members || []).filter(m => m !== user);
+  const admins = (s.admins || []).filter(m => m !== user);
+  const uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : null;
+  const remainingUids = (s.memberUids || []).filter(u => u !== uid);
+  const adminsUids = (s.adminUids || []).filter(u => u !== uid);
+  try {
+    await updateDoc(doc(db, 'servers', ctxServerId), {
+      members: remaining,
+      memberUids: remainingUids,
+      admins,
+      adminUids: adminsUids
+    });
+  } catch (e) {
+    console.error('leaveServer updateDoc failed:', e);
+    appAlert('Failed to leave server: ' + (e.message || String(e)));
+    return;
+  }
+
+  if (currentServer === ctxServerId) { currentServer = null; chan = null; mode = 'channels'; dmWith = null; }
+  await loadServers();
+  if (currentServer) switchServer(currentServer);
+  else if (servers.length > 0) { switchServer(servers[0].id); }
+  else {
+    document.querySelector('.sb h3').textContent = 'Channels';
+    document.getElementById('server-banner').style.display = 'none';
+    document.querySelector('.ch').innerHTML = `<div class="cat">Servers</div><div class="rs-empty" style="padding:8px;">Select a server from the rail</div>`;
+    updateHeader();
+    listen();
+  }
+  appAlert('You left the server.');
+}
+
+document.getElementById('ctx-invite').onclick = (e) => {
+  e.stopPropagation();
+  const sid = document.getElementById('server-ctx').dataset.serverId;
+  hideServerCtx();
+  openInviteModal(sid);
+};
+
+document.getElementById('ctx-settings').onclick = (e) => {
+  e.stopPropagation();
+  const sid = document.getElementById('server-ctx').dataset.serverId;
+  hideServerCtx();
+  openServerSettings(sid);
+};
+
+window.openLightbox = (url, label) => {
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  const info = document.getElementById('lightbox-info');
+  if (!lb || !img) return;
+  img.src = url;
+  info.textContent = label || '';
+  lb.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeLightbox = () => {
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  if (!lb) return;
+  lb.classList.add('hidden');
+  if (img) img.src = '';
+  document.body.style.overflow = '';
+};
+
+window.hideServerCtx = hideServerCtx;
+window.showServerCtx = showServerCtx;
+window.openServerSettings = openServerSettings;
+window.closeServerSettings = closeServerSettings;
+window.saveServerSettings = saveServerSettings;
+window.leaveServer = leaveServer;
+
+function switchServer(id) {
+  console.log('switchServer called with id=', id);
+  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
+  userListSig = '';
+  currentServer = id;
+  mode = 'channels';
+  dmWith = null;
+  document.getElementById('dm-btn').classList.remove('active');
+
+  const s = servers.find(x => x.id === id);
+  if (!s) { currentServer = null; }
+
+  if (currentServer) {
+    const firstCh = (s.channels && s.channels[0]) ? s.channels[0].name : 'general';
+    chan = 'srv_' + currentServer + '_' + firstCh;
+
+    document.querySelector('.sb h3').textContent = s.name;
+    const banner = document.getElementById('server-banner');
+    const bannerName = document.getElementById('server-banner-name');
+
+    if (s.banner && !String(s.banner).startsWith('file:///')) { banner.style.display = 'block'; banner.style.backgroundImage = 'url(' + s.banner + ')'; }
+    else { banner.style.display = 'none'; banner.style.backgroundImage = ''; }
+
+    bannerName.textContent = s.name;
+    if (s.description) banner.title = s.description;
+    // Show online count
+    const onlineCount = lastPresenceUsers.filter(p => p && effStatus(p) === 'online').length;
+    const totalCount = (s.members || []).length;
+    const countBadge = document.getElementById('server-member-count');
+    if (countBadge) countBadge.textContent = onlineCount + '/' + totalCount + ' online';
+    // Show welcome message for new members
+    if (s.welcomeMessage) {
+      const welcomeKey = 'froggocord-welcome-seen-' + s.id;
+      if (!localStorage.getItem(welcomeKey)) {
+        localStorage.setItem(welcomeKey, '1');
+        setTimeout(() => { appAlert('Welcome to ' + s.name + '!\n\n' + s.welcomeMessage); }, 1000);
+      }
+    }
+    // Show server rules modal on first join
+    if (s.rules && s.rules.length && typeof showServerRules === 'function') {
+      showServerRules(s.id);
+    }
+    if (s.accent) { banner.style.borderLeft = `4px solid ${escHtml(s.accent)}`; bannerName.style.color = s.accent; }
+
+    const visibleChs = (s.channels || [{ name: 'general' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
+    // Separate voice and text channels
+    const voiceChs = visibleChs.filter(c => c.type === 'voice');
+    const textChs = visibleChs.filter(c => c.type !== 'voice');
+    // Group text by category
+    const cats = {};
+    const uncat = [];
+    textChs.forEach(c => { if (c.category) { if (!cats[c.category]) cats[c.category] = []; cats[c.category].push(c); } else { uncat.push(c); } });
+    let chBtns = '';
+    if (voiceChs.length) chBtns += `<div class="cat">Voice Channels</div>` + voiceChs.map(c => renderChannelItem(s, c)).join('');
+    if (uncat.length) { console.log('switchServer: rendering', uncat.length, 'channels, uncat=', JSON.stringify(uncat.map(c=>c.name))); chBtns += `<div class="cat">Text Channels</div>` + uncat.map(c => renderChannelItem(s, c)).join(''); console.log('switchServer: chBtns after render=', chBtns.substring(0, 200)); }
+    Object.keys(cats).sort().forEach(cat => { chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(s, c)).join(''); });
+    document.querySelector('.ch').innerHTML = chBtns +
+      `<button class="cb muted" onclick="openChannelModal('${s.id}')" style="color:var(--bl);">+ Add Channel</button>` +
+      `<button class="cb muted" onclick="shareInvite('${s.id}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
+      `<button class="cb muted" onclick="revokeInvite('${s.id}')" style="color:var(--danger);">Revoke Invite</button>` +
+`<button class="cb muted" onclick="copyInviteLink('${s.id}')" style="color:var(--bl);">Copy Invite</button>`;
+  console.log('switchServer: .ch innerHTML set, channel-row count:', document.querySelectorAll('.channel-row').length);
+  } else {
+    chan = null; mode = 'channels'; dmWith = null;
+    document.querySelector('.sb h3').textContent = 'Channels';
+    document.getElementById('server-banner').style.display = 'none';
+    document.querySelector('.ch').innerHTML = `<div class="cat">Servers</div><div class="rs-empty" style="padding:8px;">Select a server from the rail</div>`;
+  }
+
+  console.log('switchServer: calling renderServerList, updateHeader, renderUserList');
+  renderServerList();
+  console.log('switchServer: after renderServerList, channel-row count:', document.querySelectorAll('.channel-row').length);
+  updateHeader();
+  renderUserList();
+  console.log('switchServer: after renderUserList, channel-row count:', document.querySelectorAll('.channel-row').length);
+
+  if (chan && currentServer) {
+    const cname = chan.split('_').slice(2).join('_');
+    if (window.__skipPush) {
+      try { history.replaceState({ chan: chan }, '', '/channel/' + currentServer + '/' + cname); } catch (e) {}
+    } else {
+      try { history.pushState({ chan: chan }, '', '/channel/' + currentServer + '/' + cname); } catch (e) {}
+    }
+  }
+
+  listen();
+}
+
+window.switchServerChannel = (sid, cname) => {
+  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+
+  currentServer = sid;
+  mode = 'channels';
+  dmWith = null;
+  document.getElementById('dm-btn').classList.remove('active');
+
+  chan = 'srv_' + sid + '_' + cname;
+  if (typeof window.addRecentChannel === 'function') window.addRecentChannel(chan);
+      const visibleChs2 = (s.channels || [{ name: 'general' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
+      const voiceChs2 = visibleChs2.filter(c => c.type === 'voice');
+      const textChs2 = visibleChs2.filter(c => c.type !== 'voice');
+      const cats2 = {};
+      const uncat2 = [];
+      textChs2.forEach(c => { if (c.category) { if (!cats2[c.category]) cats2[c.category] = []; cats2[c.category].push(c); } else { uncat2.push(c); } });
+      let chBtns2 = '';
+      if (voiceChs2.length) chBtns2 += `<div class="cat">Voice Channels</div>` + voiceChs2.map(c => renderChannelItem(s, c)).join('');
+      if (uncat2.length) chBtns2 += `<div class="cat">Text Channels</div>` + uncat2.map(c => renderChannelItem(s, c)).join('');
+      Object.keys(cats2).sort().forEach(cat => { chBtns2 += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats2[cat].map(c => renderChannelItem(s, c)).join(''); });
+      document.querySelector('.ch').innerHTML = chBtns2 +
+    `<button class="cb muted" onclick="openChannelModal('${sid}')" style="color:var(--bl);">+ Add Channel</button>` +
+    `<button class="cb muted" onclick="shareInvite('${sid}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
+    `<button class="cb muted" onclick="revokeInvite('${sid}')" style="color:var(--danger);">Revoke Invite</button>` +
+`<button class="cb muted" onclick="copyInviteLink('${sid}')" style="color:var(--bl);">Copy Invite</button>`;
+
+  renderServerList();
+  updateHeader();
+  renderUserList();
+
+  if (chan) {
+    const cname2 = chan.split('_').slice(2).join('_');
+    if (window.__skipPush) {
+      try { history.replaceState({ chan: chan }, '', '/channel/' + sid + '/' + cname2); } catch (e) {}
+    } else {
+      try { history.pushState({ chan: chan }, '', '/channel/' + sid + '/' + cname2); } catch (e) {}
+    }
+  }
+
+  listen();
+};
+
+async function createChannel(sid) {
+  const name = (await appPrompt('Channel name:') || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  if (!name) return;
+
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) {
+    appAlert('Only the owner or admins can create channels.');
+    return;
+  }
+
+  const channels = s.channels || [{ name: 'general', id: 'general' }];
+  if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
+
+  const isPrivate = await appConfirm('Make this channel private?');
+  const isNsfw = await appConfirm('Mark as NSFW (age-restricted)?');
+  const category = await appPrompt('Category (leave blank for none):');
+  const slowMode = await appPrompt('Slow mode seconds (0 for none):');
+  const announcement = await appConfirm('Announcement channel (@everyone notifications)?');
+  const channelType = await appPrompt('Channel type (text or voice/vc):', 'text');
+  const isVoice = (channelType || '').toLowerCase().trim() === 'voice' || (channelType || '').toLowerCase().trim() === 'vc';
+  channels.push({ name, id: name, type: isVoice ? 'voice' : 'text', private: !!isPrivate, nsfw: !!isNsfw, category: category || '', topic: '', description: '', slowMode: parseInt(slowMode || '0', 10) || 0, announcement: !!announcement });
+  await updateDoc(doc(db, 'servers', sid), { channels });
+  await loadServers();
+  switchServerChannel(sid, name);
+}
+
+async function shareInvite(sid) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+
+  const link = window.location.origin + window.location.pathname + '?join=' + s.inviteCode;
+  try { await navigator.clipboard.writeText(link); appAlert('Invite link copied:\n' + link); }
+  catch (e) { appAlert('Invite link (copy manually):\n' + link); }
+}
+
+window.createChannel = createChannel;
+window.channelAction = channelAction;
+window.deleteChannel = deleteChannel;
+window.shareInvite = shareInvite;
+
+async function revokeInvite(sid) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner) { appAlert('Only the server owner can revoke invite codes.'); return; }
+  if (!(await appConfirm('Revoke the current invite code and generate a new one?'))) return;
+  const oldCode = s.inviteCode;
+  const newCode = Math.random().toString(36).substring(2,8).toUpperCase();
+  // Delete old invite doc
+  try { await deleteDoc(doc(db, 'invites', oldCode.toUpperCase())); } catch (e) {}
+  // Update server with new code
+  await updateDoc(doc(db, 'servers', sid), { inviteCode: newCode });
+  // Create new invite doc
+  await setDoc(doc(db, 'invites', newCode), { serverId: sid, createdBy: user, createdAt: serverTimestamp() });
+  await loadServers();
+  if (currentServer === sid) switchServer(sid);
+  appAlert('New invite code: ' + newCode);
+}
+
+window.revokeInvite = revokeInvite;
+window.renameChannel = renameChannel;
+window.setChannelTopic = setChannelTopic;
+
+async function setChannelDescription(sid, cname) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can set channel descriptions.'); return; }
+  const ch = (s.channels || []).find(c => c.name === cname);
+  const currentDesc = ch && ch.description ? ch.description : '';
+  const desc = await appPrompt('Channel description:', currentDesc);
+  if (desc === null) return;
+  if (ch) ch.description = desc;
+  await updateDoc(doc(db, 'servers', sid), { channels: s.channels });
+  await loadServers();
+  updateHeader();
+}
+
+async function moveChannel(sid, cname, direction) {
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('No permission.'); return; }
+  const channels = s.channels || [];
+  const idx = channels.findIndex(c => c.name === cname);
+  if (idx < 0) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= channels.length) return;
+  // Swap
+  [channels[idx], channels[newIdx]] = [channels[newIdx], channels[idx]];
+  await updateDoc(doc(db, 'servers', sid), { channels });
+  await loadServers();
+  if (currentServer === sid) switchServer(sid);
+}
+
+window.moveChannel = moveChannel;
+window.serverMenu = serverMenu;
+window.switchServer = switchServer;
+window.joinServer = joinServer;
+window.loadServers = loadServers;
+
+// ===== Invite to Server =====
+let inviteServerId = null;
+
+window.openInviteModal = async (sid) => {
+  if (!sid) return;
+  inviteServerId = sid;
+
+  const s = servers.find(x => x.id === sid);
+  if (!s) return;
+
+  const modal = document.getElementById('invite-modal');
+  const preview = document.getElementById('invite-server-preview');
+  const friendsList = document.getElementById('invite-friends-list');
+
+  let previewHtml = '<div class="invite-card">';
+  if (s.banner) previewHtml += `<div class="invite-card-banner" style="background-image:url('${escHtml(s.banner)}');"></div>`;
+  previewHtml += `<div class="invite-card-body">`;
+  if (s.icon) previewHtml += `<img src="${escHtml(s.icon)}" alt="" style="width:40px;height:40px;border-radius:50%;margin-bottom:8px;">`;
+  previewHtml += `<div class="invite-card-name">${escHtml(s.name)}</div>`;
+  if (s.description) previewHtml += `<div class="invite-card-desc">${escHtml(s.description)}</div>`;
+  previewHtml += `</div></div>`;
+  preview.innerHTML = previewHtml;
+
+  try {
+    const outgoing = await getDocs(query(collection(db, "friends"), where("from", "==", user)));
+    const incoming = await getDocs(query(collection(db, "friends"), where("to", "==", user)));
+    const friendSet = new Set();
+
+    outgoing.docs.forEach(d => {
+      const data = d.data();
+      if (data.status === "accepted" && data.to) friendSet.add(data.to);
+    });
+
+    incoming.docs.forEach(d => {
+      const data = d.data();
+      if (data.status === "accepted" && data.from) friendSet.add(data.from);
+    });
+
+    const friendList = Array.from(friendSet).sort((a, b) => a.localeCompare(b));
+    if (friendList.length === 0) {
+      friendsList.innerHTML = '<div class="rs-empty" style="padding:8px;">No friends to invite yet</div>';
+    } else {
+      friendsList.innerHTML = friendList.map(f => {
+        const safe = escHtml(f);
+        return `<div class="invite-friend-row"><label><input type="checkbox" data-friend="${safe}" value="${safe}"> ${safe}</label></div>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.error('Failed to load friends:', e);
+    friendsList.innerHTML = '<div class="rs-empty" style="padding:8px;">Error loading friends</div>';
+  }
+
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.classList.add('visible'); modal.querySelector('.modal-card').classList.add('visible'); });
+};
+
+window.closeInviteModal = () => {
+  const m = document.getElementById('invite-modal');
+  m.classList.remove('visible');
+  const c = m.querySelector('.modal-card');
+  if (c) c.classList.remove('visible');
+  setTimeout(() => { m.style.display = 'none'; }, 180);
+  inviteServerId = null;
+};
+
+window.sendInvites = async () => {
+  if (!inviteServerId) return;
+  const s = servers.find(x => x.id === inviteServerId);
+  if (!s) return;
+
+  const checked = document.querySelectorAll('#invite-friends-list input[type="checkbox"]:checked');
+  if (checked.length === 0) { appAlert('Select at least one friend to invite.'); return; }
+
+  const inviteLink = window.location.origin + window.location.pathname + '?join=' + s.inviteCode;
+
+  const friendSet = new Set();
+  try {
+    const outgoing = await getDocs(query(collection(db, "friends"), where("from", "==", user)));
+    const incoming = await getDocs(query(collection(db, "friends"), where("to", "==", user)));
+    outgoing.docs.forEach(d => { if (d.data().status === "accepted" && d.data().to) friendSet.add(d.data().to); });
+    incoming.docs.forEach(d => { if (d.data().status === "accepted" && d.data().from) friendSet.add(d.data().from); });
+  } catch (e) { console.error('Failed to verify friends:', e); }
+
+  for (const cb of checked) {
+    const friend = cb.value;
+    if (!friendSet.has(friend)) {
+      console.warn('Skipping non-friend:', friend);
+      continue;
+    }
+
+    const inviteCard = `<invite server="${escHtml(s.name)}" icon="${escHtml(s.icon || '')}" banner="${escHtml(s.banner || '')}" desc="${escHtml(s.description || '')}" link="${escHtml(inviteLink)}"></invite>`;
+    const chan = 'dm_' + [user, friend].sort().join('_');
+
+    await addDoc(collection(db, "messages"), {
+      text: inviteCard,
+      user,
+      uid: (auth.currentUser && auth.currentUser.uid) || null,
+      channel: chan,
+      pfp,
+      timestamp: serverTimestamp()
+    });
+  }
+
+  closeInviteModal();
+  appAlert('Invites sent to ' + checked.length + ' friend(s)!');
+};
+
+window.openInviteModal = openInviteModal;
+window.closeInviteModal = closeInviteModal;
+window.sendInvites = sendInvites;
+
+async function openDiscoverModal() {
+  const modal = document.getElementById('discover-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => {
+    modal.classList.add('visible');
+    modal.querySelector('.modal-card').classList.add('visible');
+  });
+  const list = document.getElementById('discover-list');
+  if (list) list.innerHTML = '<div style="color:var(--mut);padding:12px;">Loading...</div>';
+  try {
+    const snap = await getDocs(query(collection(db, 'servers'), where('public', '==', true)));
+    window._discoverServers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!window._discoverServers.length) { if (list) list.innerHTML = '<div style="color:var(--mut);padding:12px;">No public servers yet.</div>'; return; }
+    filterDiscoverServers();
+  } catch (e) { if (list) list.innerHTML = '<div style="color:var(--danger);padding:12px;">Failed to load servers.</div>'; }
+}
+
+function closeDiscoverModal() {
+  const modal = document.getElementById('discover-modal');
+  if (!modal) return;
+  modal.classList.remove('visible');
+  modal.querySelector('.modal-card').classList.remove('visible');
+  setTimeout(() => { modal.style.display = 'none'; }, 180);
+}
+
+window.openDiscoverModal = openDiscoverModal;
+window.closeDiscoverModal = closeDiscoverModal;
+
+// ---------- Channel Context Menu ----------
+let ctxChannelServerId = null;
+let ctxChannelName = null;
+
+function showChannelCtx(e, sid, cname) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxChannelServerId = sid;
+  ctxChannelName = cname;
+  const m = document.getElementById('channel-ctx');
+  if (!m) return;
+  m.dataset.serverId = sid;
+  m.dataset.channelName = cname;
+  m.style.display = 'block';
+  m.style.left = e.clientX + 'px';
+  m.style.top = e.clientY + 'px';
+}
+
+function hideChannelCtx() {
+  const m = document.getElementById('channel-ctx');
+  if (m) m.style.display = 'none';
+}
+
+document.addEventListener('click', hideChannelCtx);
+
+// ---------- Channel Creation Modal ----------
+let currentChannelServerId = null;
+
+function openChannelModal(sid) {
+  currentChannelServerId = sid || ctxChannelServerId;
+  const s = getServerById(currentChannelServerId);
+  if (!s) { appAlert('No server selected.'); return; }
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can create channels.'); return; }
+  
+  hideChannelCtx();
+  const modal = document.getElementById('channel-create-modal');
+  if (!modal) return;
+  
+  // Reset form
+  document.getElementById('cc-name').value = '';
+  document.getElementById('cc-type').value = 'text';
+  document.getElementById('cc-category').value = '';
+  document.getElementById('cc-private').checked = false;
+  document.getElementById('cc-nsfw').checked = false;
+  document.getElementById('cc-announcement').checked = false;
+  document.getElementById('cc-slowmode').value = '0';
+  
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.classList.add('visible'); modal.querySelector('.modal-card').classList.add('visible'); });
+  setTimeout(() => { document.getElementById('cc-name').focus(); }, 200);
+}
+
+function openChannelModalFromCtx(type) {
+  const sid = document.getElementById('channel-ctx')?.dataset?.serverId || ctxChannelServerId;
+  hideChannelCtx();
+  openChannelModal(sid);
+  if (type === 'voice') {
+    setTimeout(() => { document.getElementById('cc-type').value = 'voice'; }, 100);
+  }
+}
+
+function closeChannelModal() {
+  const modal = document.getElementById('channel-create-modal');
+  if (!modal) return;
+  modal.classList.remove('visible');
+  modal.querySelector('.modal-card').classList.remove('visible');
+  setTimeout(() => { modal.style.display = 'none'; }, 180);
+}
+
+async function createChannelFromModal() {
+  const sid = currentChannelServerId;
+  const s = getServerById(sid);
+  if (!s) { appAlert('No server selected.'); return; }
+  
+  const { isOwner, isAdmin } = getServerRole(s);
+  if (!isOwner && !isAdmin) { appAlert('Only the owner or admins can create channels.'); return; }
+  
+  const name = (document.getElementById('cc-name').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  if (!name) { appAlert('Please enter a channel name.'); return; }
+  
+  const channels = s.channels || [{ name: 'general', id: 'general' }];
+  if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
+  
+  const type = document.getElementById('cc-type').value;
+  const isVoice = type === 'voice';
+  const isPrivate = document.getElementById('cc-private').checked;
+  const isNsfw = document.getElementById('cc-nsfw').checked;
+  const category = document.getElementById('cc-category').value.trim();
+  const slowMode = parseInt(document.getElementById('cc-slowmode').value || '0', 10) || 0;
+  const announcement = document.getElementById('cc-announcement').checked;
+  
+  channels.push({ name, id: name, type: isVoice ? 'voice' : 'text', private: isPrivate, nsfw: isNsfw, category: category, topic: '', description: '', slowMode: slowMode, announcement: announcement });
+  
+  try {
+    await updateDoc(doc(db, 'servers', sid), { channels });
+    await loadServers();
+    closeChannelModal();
+    switchServerChannel(sid, name);
+  } catch (e) {
+    console.error('createChannelFromModal failed:', e);
+    appAlert('Failed to create channel: ' + (e.message || String(e)));
+  }
+}
+
+// Export
+window.showChannelCtx = showChannelCtx;
+window.hideChannelCtx = hideChannelCtx;
+window.openChannelModal = openChannelModal;
+window.closeChannelModal = closeChannelModal;
+window.createChannelFromModal = createChannelFromModal;
+window.openChannelModalFromCtx = openChannelModalFromCtx;
+window.ctxChannelServerId = ctxChannelServerId;
+window.ctxChannelName = ctxChannelName;

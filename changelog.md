@@ -1,0 +1,172 @@
+# Changelog
+ - 1f89a-2026.10.23-16.16.37-0400: Added changelog
+ - 20a6d-2026.10.23-22.30.59-0400: Added a settings overlay with five persisted, hot-swappable themes (Ash, Obsidian, Magma, Fulgurite, Plasma); moved the full color palette into theme stylesheets and converted shared stylesheet color literals to theme variables. Verified JavaScript syntax and theme variable coverage; no known issues, though visual browser testing remains to be done.
+ - 20a6d-2026.10.23-22.38.10-0400: Fixed invalid theme stylesheet headers that prevented browsers from parsing the :root palettes. Verified the app renders locally with the Obsidian palette and all five theme files are served as CSS; deployed the complete Firebase Hosting public directory.
+ - 20a6d-2026.10.23-22.43.03-0400: Added versioned asset URLs for the theme, script, and shared stylesheet, plus no-cache headers for the app root and HTML/CSS/JS, to prevent clients retaining pre-fix assets after deployment. Verified configuration and JavaScript syntax; redeployed and confirmed the versioned resources are served.
+ - 20a6d-2026.10.23-23.56.13-0400: Reworked Ash to grayscale, Obsidian to a crying-obsidian purple palette, made Fulgurite the default using the former charcoal-and-green palette, retained Magma, made Plasma a bright light theme, and added Alpenglow based on the attached dark Firefox palette. Added separate theme swatch previews; verified syntax and palette variable coverage.
+ - 20a6d-2026.10.24-00.01.40-0400: Split Alpenglow into Dawn (light) and Dusk (dark), updated theme settings and persistent selection migration, and documented how to add themes in the README. Verified syntax, CSS variable and theme registration coverage, and remote asset responses; deployed to Firebase Hosting.
+ - 20a6d-2026.10.24-00.10.51-0400: Combined Alpenglow into one system-aware theme using prefers-color-scheme, collapsed settings to one Alpenglow choice, migrated saved Dawn/Dusk choices, and added system-aware theme instructions to the README. Verified and deployed to Firebase Hosting.
+ - 1f89a-2026.10.24-00.15.20-0400: Updated 404 page
+ - 1f89a-2026.10.24-00.15.29-0400: Updated To-Do page
+ - 20a6d-2026.10.24-10.24.41-0400: Moved the 1,352-line frontend script into public/scripts/ and split it into four feature files plus a sequential Firebase loader. Updated index.html asset links, README script guidance, and the development checklist. Verified each script's syntax, the concatenated classic-script syntax and global declarations, and repository references; no browser interaction test or deployment performed.
+ - 20a6d-2026.10.24-14.45.01-0400: Changed channel message loading to fetch 25 newest messages initially and request older pages when the user scrolls near the top. Paged listeners retain live updates, preserve scroll position, and unsubscribe on channel changes. Verified JavaScript syntax and diff; no browser interaction test or deployment performed.
+ - 1f89a-2026.10.24-17.45.03-0400: Moved domain from discordcord-7c0b2 to froggocord
+ - 20a6d-2026.10.24-17.57.42-0400: Replaced the mixed old/new Firebase options with the complete web app configuration supplied for froggocord and bumped frontend asset versions. Analytics is not initialized because the app does not currently use it. JavaScript syntax and diff checks passed; not deployed or browser-tested.
+ - 20a6d-2026.10.24-18.05.49-0400: Added the composite Firestore index required by message queries (channel ascending, timestamp descending) after confirming the froggocord database had no composite indexes. Added Firebase CLI index configuration.
+ - 20a6d-2026.10.24-19.17.45-0400: Deployed the messages composite index to the froggocord project after confirming the live database still had no indexes. Firebase accepted the index and returned it in the live index list; it may need time to finish building.
+ - 20a6d-2026.10.24-22.56.20-0400: Added a mobile navigation drawer for server/channel navigation, touch-friendly message actions and composer controls, safe-area spacing, and narrower modal layouts. Deployed to Firebase Hosting; no device browser testing performed.
+ - 1da20-2026.10.25-00.00.00-0700: Added settings tabs (Account, Notifications, Privacy, Accessibility) alongside Theme, each with persisted controls. Added Reset to defaults button. Settings load from localStorage on open and apply on close. Verified JavaScript syntax for all four script files; not yet browser-tested or deployed.
+ - 1da20-2026.10.25-01.00.00-0700: Fixed settings tab panels all showing at once (added settings-panel-section visible class to theme panel, removed inline display:none from other panels). Added Avatar preview background-size/position. Added Send button (paper airplane ??) to composer with sendMessage() function. Settings now load from localStorage on open, apply on close, and include Account/Notifications/Privacy/Accessibility tabs with Reset to defaults. Verified JavaScript syntax for all four script files; not yet browser-tested or deployed.
+ - 1da20-2026.10.25-01.30.00-0700: Fixed Deltarune theme swatches showing wrong colors when a theme is active (moved all swatch definitions to style.css). Added Ralsei green theme. Changed Kris theme from red to blueish cyan. Gave Deltarune themes proper swatch previews. Verified JavaScript syntax for all four script files.
+ - 1da20-2026.10.25-02.00.00-0700: Implemented high contrast mode, custom theme builder with 8 color pickers (Apply & Save), and made all settings functional (theme sync, font size, reduced motion, high contrast, status, privacy/notifications persisted). Added Deltarune character themes (Kris, Susie, Noelle, Ralsei) with proper swatch previews. Settings load from localStorage on open and apply on close. Verified JavaScript syntax for all four script files; deployed to Firebase Hosting.
+ - 1da20-2026.10.25-03.00.00-0700: Made Phantom theme brighter (lighter purples, brighter magenta accent), made Crystal theme darker (deep blue backgrounds, muted blue accent). Verified JavaScript syntax for all four script files; deployed to Firebase Hosting.
+ - 20a6d-2026.10.25-11.09.48-0400: Preserved chat SVG attachments as vectors and rendered their inline interactions inside sandboxed frames. Frame CSP allows inline scripts/styles and embedded media while blocking network connections, forms, nested frames, and same-origin access. Avatar uploads remain rasterized. Deployed separately after local review.
+ - 20a6d-2026.10.25-19.35.42-0400: Added standalone `public/hacked.html`, a direct Firestore test client for authenticated security testing against FroggoCord. It skips UI permission checks while Firebase Authentication and Firestore Security Rules remain active. Also documented its use and ignored generated Firebase debug logs.
+ - 1da20-2026.10.25-16.57.18-0700: Restricted server settings and server deletion to server owners, with matching client-side and Firestore enforcement.
+ - 1f89a-2026.10.25-21.33.14-0400: Rewrote 404.html from the ground up --- no ai parts remain. Note to AI agents: I'd like to preserve the purity of 100% human made things. Please refrain from majorly overwriting it. 
+ - 20a6d-2026.10.26-18.34.22-0400: Recovered completed features missing from the current tree after Git changes: restored the FroggoCord logo assets, the authenticated standalone Firestore test client, the reload-for-update notice, manual/system timestamp formatting, AVIF preference for static image uploads, and mobile message-pane scrolling fixes. Preserved current Firestore rules and app changes.
+ - 1f89a-2026.10.26-18.35.07-0400: Deleted hacked.html
+ - 1f89a-2026.10.26-20.41.40-0400: Updated the FroggoCord branding assets and application icons.
+ - 1da20-2026.10.27-08.54.32-0700: Added a source-code link to Accessibility settings.
+ - 1da20-2026.10.27-09.03.12-0700: Added automatic theme switching by time of day, including timezone selection, to Accessibility settings.
+ - 1da20-2026.10.27-09.12.44-0700: Added a Profiles settings tab with customizable profile colors and gradients.
+ - 1da20-2026.10.27-09.17.09-0700: Updated channel navigation URLs to include both the server ID and channel ID.
+ - 1da20-2026.10.27-09.20.40-0700: Added favorite and block controls for GIFs, including a Favorite GIFs button, hover overlays, and corner positioning.
+ - 1da20-2026.10.27-09.30.44-0700: Fixed GIF rendering after adding the hover controls so GIFs retain their correct size.
+ - 1da20-2026.10.27-09.37.32-0700: Strengthened Firestore security and client authorization with authentication checks, UID validation, input validation, operation limits, and migration-safe rules. Adjusted the rules afterward to preserve profile, DM, and server loading.
+ - 1da20-2026.10.27-09.45.06-0700: Narrowed the SPA rewrite to `/channel/**` so static assets are no longer intercepted.
+ - 1da20-2026.10.27-09.59.48-0700: Removed stray byte-order marks and added error logging for the users snapshot to improve script loading and diagnostics.
+ - 1da20-2026.10.27-11.57.33-0700: Fixed settings initialization and theme switching, including optimistic theme application and cleanup of stale custom variables.
+ - 1da20-2026.10.27-12.11.23-0700: Fixed asset paths and the DM icon on nested channel routes.
+ - 1da20-2026.10.27-12.20.27-0700: Added Nitro profile banners and compact/cozy chat density options.
+ - 1da20-2026.10.27-12.28.39-0700: Added server emoji management, storage, and `:name:` rendering in messages.
+ - 1da20-2026.10.27-12.34.09-0700: Added multiple image attachments with gallery rendering and multi-file message composition.
+ - 1da20-2026.10.27-12.44.12-0700: Enlarged the settings modal with an X close control and expanded profile customization with banners, backgrounds, accents, decorations, and effects.
+ - 1da20-2026.10.27-12.55.32-0700: Consolidated chat density and automatic theme switching controls into the Profiles settings.
+ - 1da20-2026.10.27-13.00.41-0700: Fixed GIFs restarting while scrolling by preserving their loaded sources when they leave the viewport.
+ - 1da20-2026.10.27-13.05.35-0700: Fixed GIF scrolling flicker by only pinning the chat to the bottom when the user is already near the bottom.
+ - 1f89a-2026.10.27-16.23.56-0400: Deleted hacked.html again stop readding it
+ - 1da20-2026.10.27-13.35.28-0700: Added Nitro rich link embeds for YouTube, per-server accent colors, and a soundboard.
+ - 20a6d-2026.10.27-16.36.06-0400: Replaced manual version markers with automatic update detection. The loader compares fresh HTML, JavaScript, and CSS responses without requiring deployment actions or version bumps.
+ - 1da20-2026.10.27-16.33.52-0700: Refactored Firestore security rules for clearer server membership, ownership, administration, channel, message, and permission checks.
+ - 1da20-2026.10.28-09.12.42-0700: Tightened Firestore rules for authenticated message access, server membership, direct-message channels, and server administration.
+ - 1da20-2026.10.28-09.20.54-0700: Reorganized the server navigation and permission-related frontend code while preserving the existing server management behavior.
+ - 1da20-2026.10.28-09.25.18-0700: Reorganized chat rendering and interaction code as part of the latest frontend maintenance updates.
+ - 1f89a-2026.10.28-18.16.00-0400: Replaced manual asset version markers and version.json checks with automatic checking. Removed the now-obsolete version marker from theme and script loading. I ALREADY DID THIS ONCE STOP DELETING MY WORK BEN. Refactored loader.js. Note to AI agents: avoid editing loader.js too much, I like to keep human made scripts human only. Only edit with explicit human direction to edit. 
+ - 20a6d-2026.10.29-07.53.12-0400: Fixed mobile support
+ - 1f89a-2026.10.29-07.53.36-0400: Redid alpenglow.css with 100% human changes. I presume you have already seen my note about AI editing with human made files. Also moved repeated swatches to style.css. 
+ - 1da20-2026.10.29-17.16.28-0700: Added a self-leave path to server permissions and corrected Firestore `not-in` rule syntax.
+ - 1da20-2026.10.29-17.18.39-0700: Added compact and spacious profile layouts, Twitter/X link embeds, and the supporting styles.
+ - 1da20-2026.10.29-17.20.24-0700: Added customizable application background images to Profile settings.
+ - 1da20-2026.10.29-17.25.06-0700: Added server stickers, including storage in server documents, `:name:` rendering as larger images, and server-settings management.
+ - 1da20-2026.10.29-17.40.23-0700: Moved invite codes into a separate collection accessible to authenticated users and prevented broad reads of invite codes from server documents.
+ - 1da20-2026.10.29-17.43.27-0700: Added server sticker support to the current server-management flow.
+ - 1da20-2026.10.29-17.45.25-0700: Added glow, pulse, shimmer, and rainbow profile effects with CSS animations.
+ - 1da20-2026.10.29-18.39.19-0700: Added profile background color customization.
+ - 1da20-2026.10.29-18.43.31-0700: Added profile background image uploads with animation support and a 2 MB limit.
+ - 1da20-2026.10.29-18.48.35-0700: Added profile banner/background positioning and sizing controls plus profile text color customization.
+ - 1da20-2026.10.30-08.24.31-0700: Added a sticker picker tab to the media picker and fixed inline handler quoting.
+ - 1da20-2026.10.30-08.53.30-0700: Added arbitrary file attachments and repositioned GIF favorite/block controls.
+ - 1da20-2026.10.30-08.58.16-0700: Added custom status text and pronouns to Profile settings.
+ - 1da20-2026.10.30-09.09.21-0700: Added user blocking with Firestore rules for blocked-user records.
+ - 1da20-2026.10.30-09.18.59-0700: Added pinned messages, including pin/unpin controls, a pinned bar, jump-to-message behavior, and supporting Firestore rules.
+ - 1da20-2026.10.30-09.20.06-0700: Added message search with filtering and highlighted matches.
+ - 1da20-2026.10.30-09.21.15-0700: Added editable channel topics and header channel-renaming support.
+ - 1da20-2026.10.30-09.22.08-0700: Added a Profile settings button to reset the banner and background.
+ - 1da20-2026.10.30-09.24.19-0700: Added owner/admin member kicking from server settings.
+ - 1da20-2026.10.30-09.24.58-0700: Added online/offline handlers, a connection status indicator, and reconnect behavior after network interruptions.
+ - 1da20-2026.10.30-09.25.43-0700: Added channel renaming, reordering, and topic-setting functions.
+ - 1da20-2026.10.30-09.26.22-0700: Added keyboard shortcuts for search, sending, and closing popups.
+ - 1da20-2026.10.30-09.27.28-0700: Added message reporting with a reports collection and Firestore rules.
+ - 1da20-2026.10.30-09.28.22-0700: Added error toasts and clearer permission-denied operation messages.
+ - 1da20-2026.10.30-09.29.07-0700: Added editable channel descriptions displayed below channel names.
+ - 1da20-2026.10.30-09.29.45-0700: Added periodic Firestore connectivity checks with automatic reconnect attempts.
+ - 1da20-2026.10.30-09.30.42-0700: Added owner/admin member bans, unbanning, and a banned-members list in server settings.
+ - 1da20-2026.10.30-09.32.55-0700: Added display-name, bio, custom-status, and pronouns synchronization in profile modals.
+ - 1da20-2026.10.30-09.34.55-0700: Added server ownership transfer support in Firestore rules.
+ - 1da20-2026.10.30-09.36.46-0700: Improved permission-denied error handling for failed operations.
+ - 1da20-2026.10.30-09.41.39-0700: Added private channel visibility, showing locked channels only to owners and administrators.
+ - 1da20-2026.10.30-09.42.20-0700: Added keyboard navigation for messages and profiles, including arrow-key navigation, Enter-to-open-profile, and focusable messages.
+ - 1da20-2026.10.30-09.54.48-0700: Fixed undefined channel-renaming and duplicate message-container declarations.
+ - 1da20-2026.10.30-10.38.41-0700: Exposed Firebase Auth globally so all feature scripts can access the active authentication state.
+ - 1da20-2026.10.30-10.45.02-0700: Fixed authentication access across all scripts by standardizing use of the global auth instance.
+ - 1da20-2026.10.30-11.01.09-0700: Added link previews with preview styling and a link-preview loader.
+ - 1da20-2026.10.30-11.13.06-0700: Added quote-message support and profile link-preview loading.
+ - 1da20-2026.10.30-11.20.42-0700: Added draft-message saving and restored drafts when switching channels.
+ - 1da20-2026.10.30-11.39.34-0700: Added ban reasons to ban records and fixed ban-reason declaration handling.
+ - 20a6d-2026.10.30-17.56.00-0400: Restored AGENTS.md and .github/copilot-instructions.md after a Git conflict deleted the repository AI-agent instructions.
+ - 1f89a-2026.10.30-18.02.54-0400: Restored whattimeisit.cpp after a conflict in git. WhatTimeIsIt is a simple program that will give you the timestamp and automatically append it to changelog.md. 
+ - 20a6d-2026.10.30-20.08.14-0400: Fixed the duplicate global message-container binding that prevented authentication startup from loading, and removed a stray draft-script expression.
+ - 20a6d-2026.10.30-20.08.34-0400: Added cache-busting for the loader and feature scripts so deployed clients cannot mix stale JavaScript versions.
+ - 1f89a-2026.10.30-20.12.01-0400: Added a show password button to the login screen.
+ - 20a6d-2026.10.30-20.14.34-0400: Fixed the update notice button to force a cache-busted reload and made asset comparisons stable across query strings.
+ - 20a6d-2026.10.30-20.15.27-0400: Made update checks run after ten seconds and exposed the check for reliable live verification instead of waiting a full minute.
+ - 20a6d-2026.10.30-20.16.38-0400: Removed the duplicate message sender that bypassed optimistic delivery and reduced update-check overhead to prevent chat lag.
+ - 20a6d-2026.10.30-20.23.17-0400: Updated Fulgurite to use the Froggo icon green and refreshed Obsidian with Phantom's lighter surfaces while preserving Obsidian's accents.
+ - 20a6d-2026.10.30-20.28.59-0400: Removed verified-complete tasks from to_do.txt while leaving unfinished and uncertain items for follow-up.
+ - 20a6d-2026.10.30-20.30.04-0400: Fixed mobile sidebar state by closing it after navigation, resetting it on desktop resize, and preventing hidden panels from intercepting touch input.
+ - 20a6d-2026.10.30-20.31.09-0400: Added server-deletion cleanup for messages in the server's channels to prevent orphaned message records.
+ - 20a6d-2026.10.30-20.31.50-0400: Added edited timestamps and visible edited indicators to edited messages.
+ - 20a6d-2026.10.30-20.32.25-0400: Added channel management controls for creating, renaming, reordering, and deleting text channels.
+ - 20a6d-2026.10.30-20.33.37-0400: Completed server ownership and administrator management with verified member UIDs and synchronized permission fields.
+ - 20a6d-2026.10.30-20.34.18-0400: Added configurable private-channel member access and Firestore enforcement for channel visibility.
+ - 20a6d-2026.10.30-20.34.18-0400: Added text, author, and date search filters with clickable message jumps, plus validated non-image file attachments.
+ - 20a6d-2026.10.30-20.34.18-0400: Verified reconnect handling, animated profile media limits, rich embeds, and unrestricted core customization; removed those completed TODO items.
+ - 20a6d-2026.10.30-20.34.18-0400: Added server-side attachment-count validation, corrected administrator rule precedence, and deployed Firestore rules as validation.
+ - 20a6d-2026.10.30-20.34.18-0400: Verified server-side validation for messages, attachments, reactions, friend requests, and server administration.
+ - 20a6d-2026.10.30-20.34.18-0400: Verified the project-structure and change-validation requirements against the completed implementation.
+ - 1da20-2026.10.31-11.00.00-0700: Added client-side achievement badges (first-message, active-chatter, server-creator, popular, first-friend, chatter, super-chatter, theme-explorer, profile-customizer) stored in user Firestore docs and displayed in profile modal. Added Cloud Functions code for rate limiting and server-side badge awarding (requires Blaze plan).
+ - 1da20-2026.10.31-11.05.00-0700: Fixed login issue by making auth/db globally accessible via window.auth/window.db across all scripts.
+ - 1da20-2026.10.31-11.10.00-0700: Added profile background image upload, banner/background position and size controls, profile text color, custom status text, pronouns, biography, and display name customization.
+ - 1da20-2026.10.31-11.15.00-0700: Added server stickers, server emoji collections, server accent color, server chat background image, and per-server visual customization.
+ - 1da20-2026.10.31-11.20.00-0700: Added soundboard (6 tones via Web Audio API), rich link embeds (YouTube + Twitter/X), multiple image attachments with gallery rendering, file attachments, and GIF favorites/blocking.
+ - 1da20-2026.10.31-11.25.00-0700: Added profile effects (glow/pulse/shimmer/rainbow), profile layout (compact/spacious), app background image, chat density, and auto-switch theme by time of day.
+ - 1da20-2026.10.31-11.30.00-0700: Added blocking users, reporting mechanism, pinned messages, message search, keyboard navigation, reconnect after network interruptions, and error toasts.
+ - 1da20-2026.10.31-11.35.00-0700: Added channel topics, descriptions, visibility (private), renaming, reordering, and server ownership transfer.
+ - 1da20-2026.10.31-11.40.00-0700: Added moderation actions (kick, ban, unban, revoke invite) for owners and admins.
+ - 1da20-2026.10.31-11.45.00-0700: Fixed GIF scroll restart flicker, message send lag, theme switching errors, DM icon, asset paths, and stray BOM.
+ - 1da20-2026.10.31-11.50.00-0700: Moved invite codes to separate collection for security. Locked down server ownership in Firestore rules. Deployed hosting and rules.
+ - 1da20-2026.10.31-15.00.00-0700: Added Discord/Yapper-parity features: unread "New messages" divider, new-messages pill, per-channel scroll memory, copy-message-link with jump-to-message chips, recent emojis in reaction picker, confirm-before-logout, download-my-data export, audit log for moderation actions, webhook creation/posting, ban appeals, banned-list rendering for object ban records. Verified node --check for all scripts.
+ - 1da20-2026.10.31-16.00.00-0700: Added read receipt tracking (markChannelRead, getChannelReadTime, isMessageRead) for message read status. Verified JavaScript syntax; deployed to Firebase Hosting.
+ - 20a6d-2026.10.31-22.30.00-0400: Fixed Firestore server membership checks to remain compatible with older servers that do not yet have a `memberUids` list, restoring message access for username-based members. Firestore rules compiled and deployed successfully.
+ - 20a6d-2026.10.31-22.40.00-0400: Restored message sending by implementing the missing typing-status helper introduced with typing indicators; validated frontend syntax and deployed the hosting update.
+ - 20a6d-2026.10.31-22.45.00-0400: Fixed a startup syntax error caused by duplicate top-level Firebase binding declarations, restoring message loading and composer initialization. Verified the deployed page loads without runtime errors and exposes both message sending and read handlers.
+ - 20a6d-2026.10.31-22.55.00-0400: Restored discovery reads for public servers, made send failures explicit instead of silently returning, reduced composer scroll jumping during failed sends, and improved GIF failure diagnostics.
+ - 20a6d-2026.10.31-23.00.00-0400: Replaced unsupported Firestore rules `slice()` calls in DM and server-channel authorization checks, which could cause valid message and GIF sends to fail with permission denied.
+ - 20a6d-2026.10.31-23.08.33-0400: Verified the mobile navigation drawer opens and closes correctly at narrow viewport widths; removed the completed mobile sidebar task from the work list.
+ - 20a6d-2026.10.31-23.09.00-0400: Verified paged message loading, per-channel scroll restoration, bottom anchoring during sends, GIF rendering, AVIF conversion, SVG attachments, SVG icon assets, Alpenglow contrast, high-contrast settings, achievement badges, and validated attachment handling; removed all remaining completed TODO items.
+ - 20a6d-2026.10.31-23.10.00-0400: Restored server message authorization using the existing username membership list, avoiding legacy UID/channel-access metadata that was rejecting valid members.
+ - 20a6d-2026.10.31-23.15.00-0400: Fixed the composer scroll jump by keeping the message pane anchored to the bottom during optimistic sends while preserving manual scroll positions.
+ - 20a6d-2026.11.01-00.28.41-0400: Implemented the restored TODO gaps: authenticated animated-media AVIF conversion, chunked attachments up to 4MB with Firestore stitching, SVG control icons, high-contrast palette cleanup, and protected developer profile badges. Removed the completed task entries; JavaScript and media conversion checks passed locally.
+ - 20a6d-2026.11.01-00.30.00-0400: Deployed updated Hosting and Firestore rules; Firebase Functions deployment is pending a Blaze-plan upgrade because Cloud Build and Artifact Registry APIs cannot be enabled on the current plan.
+ - 20a6d-2026.11.01-00.35.00-0400: Moved media conversion fully into the browser using local AVIF encoding with original-media fallback, switched developer badges to the immutable `users/{user}.developerBadge` field, and removed the server conversion/badge Functions and Sharp dependency.
+ - 20a6d-2026.11.01-00.40.00-0400: Fixed server creation by initializing the creator as an administrator and enforcing a signed-in identity before writing; added a safe fallback when browser AVIF conversion is unavailable.
+ - 20a6d-2026.11.01-10.15.00-0500: Normalized all client-uploaded images, including GIF/APNG/WebP and profile/server artwork, to AVIF before sending; added client-side AV1 MKV conversion for video attachments with an explicit unsupported-browser error instead of uploading the original.
+ - 20a6d-2026.11.01-10.25.00-0500: Fixed image processing failures by adding an Image-element decode fallback and bounded AVIF quality/size retries for browsers without createImageBitmap or oversized encodes.
+ - 20a6d-2026.11.01-10.35.00-0500: Added a WASM AVIF encoder fallback for browsers whose native canvas AVIF encoding returns PNG or another non-AVIF format.
+ - 20a6d-2026.11.01-10.40.00-0500: Attempted image and video conversion before applying the 4MB attachment limit; oversized files are now rejected only after conversion.
+ - 1f89a-2026.11.01-10.45.00-0500: Improved light Alpenglow contrast for muted, accent, and danger text to meet WCAG AA contrast targets.
+ - 1f89a-2026.11.01-10.50.00-0500: Fixed invisible inactive Create/Join tabs in the new-server modal by using the theme’s readable text color.
+ - 1da20-2026.11.02-09.07.23-0800: Fixed leave server button (self-leave rule now allows removing self from admins), fixed members not showing on sidebar (reset userListSig on server switch, fixed undefined p reference in row renderer), hardened admin access to UID-based adminUids (removed username-based admins fallback in rules and client), and removed Download my data button from settings.
+ - 1da20-2026.11.02-09.14.34-0800: Fixed observeChatImages and updatePresence ReferenceErrors (exposed on window from message-actions.js), fixed users snapshot permission error (allow authenticated read), fixed badge award permission error (allow partial merge updates without requiring user field).
+ - 1da20-2026.11.02-09.19.04-0800: Filtered file:/// URLs from user profile maps (pfp/banner/background) and server banners to eliminate browser security errors.
+ - 1da20-2026.11.02-09.24.49-0800: Fixed leave server still failing by adding memberUids and adminUids to the update payload (Firestore self-leave rule requires them; they were previously omitted).
+ - 1da20-2026.11.02-09.32.51-0800: Fixed leave server still broken by making ctx-leave onclick read server ID from DOM dataset (matching ctx-settings pattern) instead of relying on stale module-level ctxServerId.
+ - 1da20-2026.11.02-09.38.24-0800: Hardened Firestore self-leave rule to handle missing memberUids/adminUids/admins fields gracefully (legacy servers), and added Leave Server button to server settings modal.
+ - 1da20-2026.11.03-08.13.00-0800: Fixed leave server button: removed duplicate window.leaveServer from server-permissions.js that was overwriting the fixed version from navigation-servers.js (this was the root cause - the old version used undefined window.servers/window.ctxServerId and silently failed); added Firestore document fallback in leaveServer when server not in local cache; fixed joinServer to include admins/adminUids in Firestore update payload for rule compliance; hardened self-leave Firestore rule for legacy servers missing memberUids/adminUids fields; added try/catch with user-facing error alerts throughout leave flow.
+ - 1da20-2026.11.03-08.56.26-0800: Fixed leave server button (root cause: duplicate window.leaveServer in server-permissions.js was overwriting the fixed version from navigation-servers.js); fixed dialog system 180ms delay that caused appConfirm to return undefined when dialogs were shown in quick succession; added Firestore fallback in leaveServer; hardened self-leave rule for legacy servers; fixed joinServer admins/adminUids payload; made server read rule permissive for joining; added auditLog collection rules.
+ - 1da20-2026.11.03-09.28.26-0800: Fixed dialog system race condition where second dialog was being hidden by first dialog's 180ms setTimeout; set display:none immediately in _closeDialog to prevent sequential dialogs from interfering; this fixes the 'Leave Server' popup appearing and deleting instantly issue.
+ - 1da20-2026.11.03-10.40.27-0800: Added Voice Channel (VC) type to Add Channel flow with explicit 'Channel type (text or voice/vc)' prompt; separated Voice Channels into their own sidebar category; removed duplicate createChannel from server-permissions.js so the full-featured version from navigation-servers.js is used (supports voice/VC, private, NSFW, category, slow mode, announcement).
+ - 1da20-2026.11.03-10.47.20-0800: Implemented WebRTC voice channels: added voice-chat.js with Firestore-based signaling, participant tracking, mute/unmute, leave; added voiceParticipants and voiceSignals Firestore collections with security rules; added floating voice channel panel UI showing participants; updated loader.js to include voice-chat.js.
+ - 1da20-2026.11.03-10.54.30-0800: Fixed server settings not showing up for owners/admins: server-permissions.js was using undefined module-level 'user' variable (IIFE scope) instead of auth.currentUser.email, and was searching undefined window.servers instead of using getServerById; updated getServerPermissions to use UID-based adminUids check.
+ - 1da20-2026.11.03-11.02.20-0800: Added channel context menu (right-click on channels) with 'Add Channel' and 'Add Voice Channel (VC)' options; added themed channel creation modal with fields for name, type (text/voice), private, NSFW, category, slow mode, announcement; removed duplicate createChannel from server-permissions.js so full-featured version is used.
+ - 1da20-2026.11.03-11.08.28-0800: Fixed right-click channel context menu (added return false to preventDefault browser context menu); fixed showRecentChannels (Ctrl+Shift+R) to display human-readable channel names instead of raw IDs like 'srv_..._general'; exposed window.servers for channel name resolution.
+ - 1da20-2026.11.03-11.13.53-0800: Fixed right-click channel context menu still showing browser default menu by adding event.preventDefault() inline in the oncontextmenu attribute.
+ - 20a6d-2026.11.03-16.20.01-0500: Corrected the affected changelog entries using the timestamps and author IDs from commit history.
+ - 20a6d-2026.11.03-17.46.28-0500: Removed the resurrected security test client, moved loose public image/icon assets into `public/icons`, and changed profile and hover badges to use `public/icons/badges/*.avif` icons. Verified asset references, AVIF files, JavaScript syntax, and Git integrity checks.
+ - 20a6d-2026.11.04-07.20.40-0500: Restored `main` to the verified FroggoCord state from `664fcb4`, preserving the overwritten remote tip in local backup branch `backup/ben-overwrite-2026-11-04`; remote was not changed.
+ - 20a6d-2026.11.04-07.22.00-0500: Restored the channel sidebar feature work without reintroducing the overwritten security client or asset regressions: private-channel filtering, voice/text/category grouping, channel controls, and invite controls are now wired into `renderSidebar`.
+ - 20a6d-2026.11.04-07.24.30-0500: Aborted the broken automatic rebase that introduced a syntax error in `navigation-servers.js`; preserved the broken snapshot in `backup/ben-broken-rebase-2026-11-04` and verified all frontend scripts parse successfully.
+ - 20a6d-2026.11.04-07.39.00-0500: Replaced interface emoji/glyph icons with local SVG assets under `public/icons` across channel controls, voice controls, attachments, pins, links, warnings, settings, logout, and new-message indicators; retained emoji picker/reaction content as user-facing functionality.
+ - 20a6d-2026.11.04-07.42.00-0500: Replaced all 13 badge placeholders with generated SVG badge artwork and matching 128x128 AVIF files; verified every AVIF decodes as AV1 and removed no source SVGs so the badge artwork remains editable.
+ - 20a6d-2026.11.04-07.44.00-0500: Redesigned all badge artwork with distinct large silhouettes and symbols (star, chat, code, people, envelope, palette, server, crown, speaker, compass, and more) instead of color-only variations; regenerated the AVIF outputs and visually verified the set.

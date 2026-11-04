@@ -1,0 +1,282 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function username() {
+      return request.auth.token.email.split('@')[0];
+    }
+
+    function isMemberOfServer(serverDoc) {
+      return serverDoc.members is list
+        && username() in serverDoc.members;
+    }
+
+    function isChannelForServer(channel) {
+      return channel is string
+        && channel.matches('^srv_[A-Za-z0-9_-]+_.*$');
+    }
+
+    function serverIdFromChannel(channel) {
+      return channel.split('_')[1];
+    }
+
+    function isDmChannelForUser(channel) {
+      return channel is string
+        && channel.matches('^dm_.*$')
+        && (
+          channel.split('_')[1] == username()
+          || channel.split('_')[2] == username()
+        );
+    }
+
+    function canAccessServerChannel(channel) {
+      let server = get(/databases/$(database)/documents/servers/$(serverIdFromChannel(channel))).data;
+      return isMemberOfServer(server);
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.user == userId
+        && request.resource.data.user is string
+        && request.resource.data.user.size() > 0
+        && request.resource.data.user.size() <= 32;
+
+      allow update: if isAuth()
+        && (resource.data.uid == request.auth.uid || !('uid' in resource.data) || resource.data.user == username())
+        && request.resource.data.user == resource.data.user
+        && (!('developerBadge' in request.resource.data) || request.resource.data.developerBadge == resource.data.developerBadge)
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid);
+
+      allow delete: if isAuth() && resource.data.uid == request.auth.uid;
+    }
+
+    match /presence/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isAuth()
+        && userId == username()
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid);
+    }
+
+    match /messages/{messageId} {
+      allow read: if request.auth != null;
+
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.user == username()
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 4000
+        && (!('files' in request.resource.data) || (request.resource.data.files is list && request.resource.data.files.size() <= 3))
+        && (!('attachments' in request.resource.data) || (request.resource.data.attachments is list && request.resource.data.attachments.size() <= 3))
+        && (!('images' in request.resource.data) || request.resource.data.images is list)
+        && (!('images' in request.resource.data) || !('files' in request.resource.data) || !('attachments' in request.resource.data)
+          || request.resource.data.images.size() + request.resource.data.files.size() + request.resource.data.attachments.size() <= 3)
+        && request.resource.data.channel is string
+        && (
+          (
+            isChannelForServer(request.resource.data.channel)
+            && exists(/databases/$(database)/documents/servers/$(serverIdFromChannel(request.resource.data.channel)))
+            && canAccessServerChannel(request.resource.data.channel)
+          )
+          ||
+          (
+            isDmChannelForUser(request.resource.data.channel)
+          )
+        );
+
+      allow update: if isAuth()
+        && (
+          (
+            (resource.data.uid == request.auth.uid || (!('uid' in resource.data) && resource.data.user == username()))
+            && (!('user' in request.resource.data) || request.resource.data.user == resource.data.user)
+            && request.resource.data.text is string
+            && request.resource.data.text.size() <= 4000
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'editedAt', 'replyTo', 'images', 'files', 'attachments', 'imageW', 'imageH', 'clientMsgId'])
+          )
+          ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+            && resource.data.channel is string
+            && isChannelForServer(resource.data.channel)
+            && canAccessServerChannel(resource.data.channel)
+          )
+        )
+        && (
+          (
+            resource.data.channel is string
+            && isChannelForServer(resource.data.channel)
+            && exists(/databases/$(database)/documents/servers/$(serverIdFromChannel(resource.data.channel)))
+            && canAccessServerChannel(resource.data.channel)
+          )
+          ||
+          (
+            resource.data.channel is string
+            && isDmChannelForUser(resource.data.channel)
+          )
+        )
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid);
+
+      allow delete: if isAuth()
+        && (resource.data.uid == request.auth.uid || (!('uid' in resource.data) && resource.data.user == username()))
+        && (
+          (
+            resource.data.channel is string
+            && isChannelForServer(resource.data.channel)
+            && exists(/databases/$(database)/documents/servers/$(serverIdFromChannel(resource.data.channel)))
+            && canAccessServerChannel(resource.data.channel)
+          )
+          ||
+          (
+            resource.data.channel is string
+            && isDmChannelForUser(resource.data.channel)
+          )
+        );
+    }
+
+    match /messageChunks/{chunkId} {
+      allow read: if isAuth()
+        && (
+          (resource.data.channel is string && isChannelForServer(resource.data.channel) && canAccessServerChannel(resource.data.channel))
+          || (resource.data.channel is string && isDmChannelForUser(resource.data.channel))
+        );
+      allow create: if isAuth()
+        && request.resource.data.user == username()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 350000
+        && request.resource.data.messageId is string
+        && request.resource.data.channel is string
+        && (
+          (isChannelForServer(request.resource.data.channel) && canAccessServerChannel(request.resource.data.channel))
+          || isDmChannelForUser(request.resource.data.channel)
+        );
+      allow delete: if isAuth() && resource.data.user == username();
+    }
+
+    match /friends/{friendId} {
+      allow read: if isAuth() && (resource.data.from == username() || resource.data.to == username());
+      allow create: if isAuth()
+        && request.resource.data.from == username()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.from is string
+        && request.resource.data.to is string;
+
+      allow update: if isAuth()
+        && (resource.data.from == username() || resource.data.to == username())
+        && request.resource.data.from == resource.data.from
+        && request.resource.data.to == resource.data.to;
+
+      allow delete: if isAuth() && (resource.data.from == username() || resource.data.to == username());
+    }
+
+    match /servers/{serverId} {
+      allow read: if request.auth != null;
+
+      allow create: if isAuth()
+        && request.resource.data.owner == username()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.members is list
+        && request.resource.data.members.size() >= 1
+        && username() in request.resource.data.members
+        && request.resource.data.memberUids is list
+        && request.auth.uid in request.resource.data.memberUids
+        && request.resource.data.adminUids is list
+        && request.auth.uid in request.resource.data.adminUids;
+
+      allow update: if request.auth != null;
+
+      allow delete: if isAuth() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /typing/{typingId} {
+      allow read: if request.auth != null;
+      allow write: if isAuth();
+    }
+
+    match /reads/{readId} {
+      allow read, write: if isAuth();
+    }
+
+    // Pins: readable by channel members; writable by authorized moderators.
+    match /pins/{pinId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth();
+      allow delete: if isAuth();
+    }
+
+    // Invites: readable by any authenticated user (for join lookups).
+    // Only the server owner can create/delete invite codes.
+    match /invites/{inviteCode} {
+      allow read: if request.auth != null;
+      allow create: if isAuth()
+        && request.resource.data.serverId is string
+        && request.resource.data.createdBy == username();
+      allow update: if false;
+      allow delete: if isAuth() && resource.data.createdBy == username();
+    }
+
+    // Blocked: readable/writable only by the blocker.
+    match /blocked/{blockId} {
+      allow read: if isAuth() && resource.data.blocker == username();
+      allow create: if isAuth() && request.resource.data.blocker == username();
+      allow delete: if isAuth() && resource.data.blocker == username();
+    }
+
+    // Threads: readable/writable by channel members.
+    match /threads/{threadId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth();
+      allow update: if isAuth() && request.resource.data.creator == username();
+      allow delete: if isAuth() && resource.data.creator == username();
+    }
+
+    // Message edit history: readable by any auth user; writable by message author.
+    match /messageHistory/{historyId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth() && request.resource.data.messageId is string && request.resource.data.user == username();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Events: readable by server members; writable by owner/admin.
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth();
+      allow update: if request.auth != null;
+      allow delete: if isAuth();
+    }
+
+    // Reports: readable by admins/owners; writable by any authenticated user.
+    match /auditLog/{auditId} {
+      allow read, write: if isAuth();
+    }
+
+    match /voiceParticipants/{participantId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && request.resource.data.username == username();
+      allow delete: if isAuth() && resource.data.username == username();
+    }
+
+    match /voiceSignals/{signalId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.from == username();
+      allow delete: if isAuth() && resource.data.to == username();
+    }
+
+    match /reports/{reportId} {
+      allow read: if request.auth != null;
+      allow create: if isAuth()
+        && request.resource.data.reporter == username()
+        && request.resource.data.type is string
+        && request.resource.data.targetId is string;
+      allow update: if request.auth != null;
+      allow delete: if isAuth();
+    }
+  }
+}

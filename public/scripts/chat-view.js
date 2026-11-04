@@ -1,0 +1,1229 @@
+// Profiles, message rendering, live listeners, composer, and authentication startup.
+window.openProfile = async (u) => {
+  const modal = document.getElementById('profile-modal');
+  const banner = document.getElementById('prof-banner');
+  const ub = (typeof userBannerMap !== 'undefined') ? userBannerMap.get(u) : null;
+  if (banner) { if (ub) { banner.style.backgroundImage = 'url('+escHtml(ub)+')'; } else { banner.style.backgroundImage = 'none'; } 
+    const prof = (typeof settings !== 'undefined' && settings.profile) ? settings.profile : null;
+    if (prof && u === user) {
+      banner.style.backgroundPosition = prof.bannerPos || 'center';
+      banner.style.backgroundSize = prof.bannerSize || 'cover';
+    }
+  }
+  const modalCard = modal.querySelector('.modal-card');
+  const bg = (typeof userBackgroundMap !== 'undefined') ? userBackgroundMap.get(u) : null;
+  if (modalCard) { if (bg) { modalCard.style.backgroundImage = 'url('+escHtml(bg)+')'; modalCard.style.backgroundSize = (typeof settings !== 'undefined' && settings.profile && u === user) ? (settings.profile.bgSize || 'cover') : 'cover'; modalCard.style.backgroundPosition = (typeof settings !== 'undefined' && settings.profile && u === user) ? (settings.profile.bgPos || 'center') : 'center'; } else { modalCard.style.backgroundImage = ''; } const bgColor = (typeof userBgColorMap !== 'undefined') ? userBgColorMap.get(u) : null; if (bgColor) modalCard.style.backgroundColor = bgColor; else modalCard.style.backgroundColor = ''; }
+  const av = document.getElementById('prof-avatar');
+  const upfp = (typeof userPfpMap !== 'undefined') ? userPfpMap.get(u) : null;
+  const hasPfp = upfp && !upfp.startsWith('file:///');
+  if (hasPfp) {
+    av.style.backgroundImage = `url('${escHtml(upfp)}')`;
+    av.textContent = '';
+    av.style.textIndent = '-9999px';
+  } else {
+    av.style.backgroundImage = 'none';
+    av.textContent = (u||'?')[0].toUpperCase();
+    av.style.textIndent = '0';
+  }
+  const pname = document.getElementById('prof-name');
+  const dn = (typeof userDisplayNameMap !== 'undefined') ? userDisplayNameMap.get(u) : null;
+  pname.textContent = dn || u;
+  const txtCol = (typeof userTextColorMap !== 'undefined') ? userTextColorMap.get(u) : null;
+  if (txtCol) pname.style.color = txtCol;
+  const profStatusEl = document.getElementById('prof-status');
+  // Apply profile layout
+  try {
+    const prof = (typeof settings !== 'undefined' && settings.profile) ? settings.profile : null;
+    if (prof && u === user && modalCard) {
+      modalCard.classList.remove('profile-compact', 'profile-spacious');
+      if (prof.layout === 'compact') modalCard.classList.add('profile-compact');
+      if (prof.layout === 'spacious') modalCard.classList.add('profile-spacious');
+    }
+  } catch (e) {}
+  // Apply profile effect
+  try {
+    const prof = (typeof settings !== 'undefined' && settings.profile) ? settings.profile : null;
+    if (prof && u === user) {
+      const av = document.getElementById('prof-avatar');
+      if (av) {
+        av.classList.remove('profile-effect-glow', 'profile-effect-pulse', 'profile-effect-shimmer');
+        if (prof.effect) {
+          const type = prof.effectType || 'glow';
+          if (type === 'glow' || type === 'pulse' || type === 'shimmer') {
+            av.classList.add('profile-effect-' + type);
+          }
+        }
+      }
+      if (prof.effect && prof.effectType === 'rainbow') {
+        pname.classList.add('profile-effect-rainbow');
+      } else {
+        pname.classList.remove('profile-effect-rainbow');
+      }
+    } else {
+      const av = document.getElementById('prof-avatar');
+      if (av) av.classList.remove('profile-effect-glow', 'profile-effect-pulse', 'profile-effect-shimmer');
+      pname.classList.remove('profile-effect-rainbow');
+    }
+  } catch (e) {}
+  try {
+    const prof = (typeof settings !== 'undefined' && settings.profile) ? settings.profile : null;
+    if (prof && u === user) {
+      if (prof.gradient && prof.gradient.enabled) {
+        pname.style.background = 'linear-gradient(' + (prof.gradient.direction||'to right') + ', ' + (prof.gradient.from||prof.color) + ', ' + (prof.gradient.to||prof.color) + ')';
+        pname.style.webkitBackgroundClip = 'text';
+        pname.style.backgroundClip = 'text';
+        pname.style.color = 'transparent';
+      } else {
+        pname.style.background = '';
+        pname.style.webkitBackgroundClip = '';
+        pname.style.backgroundClip = '';
+        pname.style.color = prof.color || '';
+      }
+    } else {
+      pname.style.background = '';
+      pname.style.webkitBackgroundClip = '';
+      pname.style.backgroundClip = '';
+      const accent = (typeof userAccentMap !== 'undefined') ? userAccentMap.get(u) : null;
+      if (accent) pname.style.color = accent;
+      else pname.style.color = '';
+    }
+  } catch (e) {}
+  const pres = Array.from(document.getElementById('user-list').children).find(el => el.dataset.user === u);
+  const dot = pres && pres.querySelector('.status-dot');
+  document.getElementById('prof-status').textContent = dot ? (dot.getAttribute('title') || 'Online') : 'Offline';
+  const bio = (typeof userBioMap !== 'undefined') ? userBioMap.get(u) : null;
+  if (bio) {
+    const bioEl = document.createElement('div');
+    bioEl.style.cssText = 'color:var(--mut);font-size:13px;margin:8px 0;white-space:pre-wrap;';
+    bioEl.textContent = bio;
+    profStatusEl.parentNode.insertBefore(bioEl, profStatusEl.nextSibling);
+  }
+  const cs = (typeof userCustomStatusMap !== 'undefined') ? userCustomStatusMap.get(u) : null;
+  const pr = (typeof userPronounsMap !== 'undefined') ? userPronounsMap.get(u) : null;
+  if (profStatusEl) {
+    let statusText = profStatusEl.textContent;
+    if (pr) statusText = pr + ' \u00b7 ' + statusText;
+    if (cs) statusText = '\"' + cs + '\" \u00b7 ' + statusText;
+    profStatusEl.textContent = statusText;
+  }
+  const badgesEl = document.getElementById('prof-badges');
+  if (badgesEl) {
+    const badges = [];
+    try {
+      if (typeof servers !== 'undefined') {
+        if (servers.some(srv => srv.owner === u)) badges.push('Server Owner');
+        if (servers.some(srv => (srv.admins||[]).includes(u))) badges.push('Admin');
+      }
+    } catch (e) {}
+    const dec = (typeof userDecorationMap !== 'undefined') ? userDecorationMap.get(u) : null;
+    // Achievement badges from Firestore
+    const achievementBadges = (typeof userBadgesMap !== 'undefined') ? (userBadgesMap.get(u) || []) : [];
+    achievementBadges.forEach(b => {
+      const label = b.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      if (!badges.includes(label)) badges.push(label);
+    });
+    badgesEl.innerHTML = (dec ? `<span style="display:inline-block;margin:2px;"><img src="${escHtml(dec)}" alt="decoration" title="Decoration" style="width:20px;height:20px;border-radius:4px;"></span>` : '') +
+      badges.map(b => `<span style="display:inline-block;margin:2px;"><img src="${getBadgeIconUrl(b)}" alt="${escHtml(b)}" title="${escHtml(b)}" style="width:20px;height:20px;border-radius:4px;"></span>`).join('');
+  }
+  const actions = document.getElementById('prof-actions');
+  const note = (typeof getUserNote === 'function') ? getUserNote(u) : '';
+  if (note) {
+    const noteDiv = document.createElement('div');
+    noteDiv.style.cssText = 'color:var(--mut);font-size:13px;margin:8px 0;white-space:pre-wrap;';
+    noteDiv.textContent = 'Note: ' + note;
+    const mc = modal.querySelector('.modal-card');
+    if (mc) mc.appendChild(noteDiv);
+  }
+  actions.innerHTML = '<div style="color:var(--mut);font-size:12px;">Loading...</div>';
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => {
+    modal.classList.add('visible');
+    modal.querySelector('.modal-card').classList.add('visible');
+  });
+
+  let html = '';
+  if (u !== user) {
+    // Block/unblock button
+    const isBlockedUser = (typeof isBlocked === 'function') ? isBlocked(u) : false;
+    html += isBlockedUser
+      ? `<button onclick="toggleBlock('${escHtml(u)}'); closeProfile();" style="background:var(--mut);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Unblock</button>`
+      : `<button onclick="toggleBlock('${escHtml(u)}'); closeProfile();" style="background:var(--danger);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Block</button>`;
+    let friendDoc = null;
+    try {
+      const snap = await getDocs(query(collection(db,"friends"), where("from","==",user)));
+      const outgoing = snap.docs.find(d => d.data().to === u && d.data().status === "accepted");
+      if (outgoing) friendDoc = outgoing;
+      else {
+        const snap2 = await getDocs(query(collection(db,"friends"), where("to","==",user)));
+        const incoming = snap2.docs.find(d => d.data().from === u && d.data().status === "accepted");
+        if (incoming) friendDoc = incoming;
+      }
+    } catch (e) { console.log("friend check failed", e); }
+    if (friendDoc) {
+      html += `<span style="color:var(--mut);font-size:11px;display:block;margin-bottom:4px;">Friends</span>`;
+      html += `<button onclick="unfriendReq('${friendDoc.id}'); closeProfile();" style="background:var(--danger);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Unfriend</button>`;
+    } else {
+      let btnHtml = `<button onclick="sendReq('${escHtml(u)}'); closeProfile();" style="background:var(--bl);color:var(--accent-contrast);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Send Friend Request</button>`;
+      try {
+        const snap = await getDocs(query(collection(db,"friends"), where("from","==",user)));
+        const existing = snap.docs.find(d => d.data().to === u && d.data().status === "pending");
+        if (existing) {
+          btnHtml = `<button onclick="cancelReq('${existing.id}'); closeProfile();" style="background:var(--mut);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Cancel Request</button>`;
+        } else {
+          const snap2 = await getDocs(query(collection(db,"friends"), where("to","==",user)));
+          const incoming = snap2.docs.find(d => d.data().from === u && d.data().status === "pending");
+          if (incoming) {
+            btnHtml = `<button onclick="acceptReq('${incoming.id}'); closeProfile();" style="background:var(--bl);color:var(--accent-contrast);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:bold;">Accept Request</button>`;
+          }
+        }
+      } catch (e) { console.log("friend check failed", e); }
+      html += btnHtml;
+    }
+    html += `<button onclick="openDM('${escHtml(u)}'); closeProfile();" style="background:var(--bg-t);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Message</button>`;
+    html += `<button onclick="editUserNote('${escHtml(u)}'); closeProfile();" style="background:var(--bg-t);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Note</button>`;
+  } else {
+    html += `<div style="color:var(--mut);font-size:12px;">This is you</div>`;
+  }
+  actions.innerHTML = html;
+};
+window.closeProfile = () => {
+  const modal = document.getElementById('profile-modal');
+  const card = modal.querySelector('.modal-card');
+  modal.classList.remove('visible');
+  if (card) card.classList.remove('visible');
+  setTimeout(() => { modal.style.display = 'none'; }, 180);
+};
+
+function fmtMsgTime(ts) {
+  try {
+    const d = ts && ts.toDate ? ts.toDate() : null;
+    if (!d) return '';
+    const same = d.toDateString() === new Date().toDateString();
+    const format = settings?.accessibility?.timeFormat || 'system';
+    const timeOptions = { hour: 'numeric', minute: '2-digit' };
+    if (format === '12-hour') timeOptions.hourCycle = 'h12';
+    else if (format === '24-hour') timeOptions.hourCycle = 'h23';
+    return (same ? 'Today at ' : d.toLocaleDateString([], {month:'short', day:'numeric'}) + ' at ') + d.toLocaleTimeString([], timeOptions);
+  } catch (e) { return ''; }
+}
+
+const chatMessageContainer = document.getElementById('message-container');
+const newMessagesPill = document.getElementById('new-messages-pill');
+if (newMessagesPill) newMessagesPill.addEventListener('click', () => { msgsPinned = true; pinMsgsBottom(); newMessagesPill.style.display = 'none'; });
+const MESSAGE_PAGE_SIZE = 25;
+let activeMessagesChannel = null;
+let messagePages = [];
+let loadingOlderMessages = false;
+let hasOlderMessages = true;
+let messageHistoryError = '';
+let msgsPinned = true;
+let isPinning = false;
+let userScrolling = false;
+let userScrollTimer = null;
+async function hydrateChunkedAttachments(message) {
+  if (!message || !message.id || !Array.isArray(message.attachments) || message._chunkedHydrated) return;
+  message._chunkedHydrated = true;
+  try {
+    const snapshot = await getDocs(query(collection(db, 'messageChunks'), where('messageId', '==', message.id)));
+    const byAttachment = new Map();
+    snapshot.docs.forEach(chunk => {
+      const data = chunk.data();
+      if (!byAttachment.has(data.attachmentId)) byAttachment.set(data.attachmentId, []);
+      byAttachment.get(data.attachmentId).push(data);
+    });
+    message.attachments.forEach(attachment => {
+      const chunks = (byAttachment.get(attachment.id) || []).sort((a, b) => a.index - b.index);
+      if (chunks.length !== attachment.chunks) return;
+      const dataUrl = chunks.map(chunk => chunk.data).join('');
+      if (attachment.isImage) {
+        if (!Array.isArray(message.images)) message.images = [];
+        message.images.push(dataUrl);
+      } else {
+        if (!Array.isArray(message.files)) message.files = [];
+        message.files.push({ name: attachment.name, size: attachment.size, type: attachment.type, preview: dataUrl });
+      }
+    });
+    renderMessagePages({ preserveScroll: true });
+  } catch (error) {
+    message._chunkedHydrated = false;
+    console.error('Could not load attachment chunks', error);
+  }
+}
+
+function setTyping(isTyping) {
+  if (!user || !chan) return;
+  const typingId = user + '__' + chan;
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+    typingTimer = null;
+  }
+
+  const write = isTyping
+    ? setDoc(doc(db, 'typing', typingId), {
+      user,
+      channel: chan,
+      timestamp: serverTimestamp()
+    }, { merge: true })
+    : deleteDoc(doc(db, 'typing', typingId));
+
+  write.catch((error) => console.error('typing status update failed', error));
+  if (isTyping) {
+    typingTimer = setTimeout(() => setTyping(false), 5000);
+  }
+}
+
+function markUserScroll() {
+  userScrolling = true;
+  clearTimeout(userScrollTimer);
+  userScrollTimer = setTimeout(() => { userScrolling = false; }, 300);
+}
+
+chatMessageContainer.addEventListener('wheel', markUserScroll, { passive: true });
+chatMessageContainer.addEventListener('touchstart', markUserScroll, { passive: true });
+chatMessageContainer.addEventListener('mousedown', markUserScroll, { passive: true });
+chatMessageContainer.addEventListener('scroll', () => {
+  if (isPinning) return;
+  if (userScrolling) msgsPinned = chatMessageContainer.scrollHeight - chatMessageContainer.scrollTop - chatMessageContainer.clientHeight < 80;
+  if (userScrolling && chatMessageContainer.scrollTop <= 80) loadOlderMessages();
+  const pill = document.getElementById('new-messages-pill');
+  if (pill && msgsPinned) pill.style.display = 'none';
+}, { passive: true });
+
+function pinMsgsBottom() {
+  msgsPinned = true;
+  isPinning = true;
+  chatMessageContainer.scrollTop = chatMessageContainer.scrollHeight;
+  setTimeout(() => { chatMessageContainer.scrollTop = chatMessageContainer.scrollHeight; isPinning = false; }, 0);
+}
+
+const chatGifDims = {};
+const REACTION_EMOJIS = ['👍','👎','❤️','😂','👮','😢','😡','🎉','🔥','👀','✅','❌','💯','🤔','😍','🙏','👏','💀','😭','😎','🥳','🤯'];
+const messageEditHistory = new Map(); // msgId => [{ text, timestamp }]
+const RECENT_EMOJIS_KEY = 'froggocord-recent-emojis';
+
+function renderUserBadges(u) {
+  const badges = (typeof userBadgesMap !== 'undefined') ? userBadgesMap.get(u) : null;
+  if (!badges || !badges.length) return '';
+  return badges.map(b => `<img src="${getBadgeIconUrl(b)}" alt="${escHtml(b)}" title="${escHtml(b)}" style="width:18px;height:18px;border-radius:4px;margin-left:2px;vertical-align:middle;">`).join('');
+}
+let recentEmojis = [];
+try { recentEmojis = JSON.parse(localStorage.getItem(RECENT_EMOJIS_KEY) || '[]'); } catch (e) {}
+function addRecentEmoji(emoji) {
+  recentEmojis = recentEmojis.filter(e => e !== emoji);
+  recentEmojis.unshift(emoji);
+  recentEmojis = recentEmojis.slice(0, 10);
+  try { localStorage.setItem(RECENT_EMOJIS_KEY, JSON.stringify(recentEmojis)); } catch (e) {}
+}
+
+function renderReactions(m) {
+  const r = (m && m.reactions) || {};
+  const entries = Object.entries(r).filter(function(e){ return Array.isArray(e[1]) && e[1].length > 0; });
+  if (!entries.length) return '';
+  return '<div class="reactions" data-msgid="' + escHtml(m.id) + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">' +
+    entries.map(function(pair){
+      const emoji = pair[0];
+      const users = pair[1];
+      const mine = Array.isArray(users) && users.indexOf(user) >= 0;
+      const userNames = Array.isArray(users) ? users.map(function(u){ return '<span style="white-space:nowrap;">' + escHtml(u) + '</span>'; }).join(', ') : '';
+      return '<button data-action="toggle-reaction" data-msgid="' + escHtml(m.id) + '" data-emoji="' + escHtml(emoji) + '" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;border:1px solid ' + (mine ? 'var(--bl)' : 'var(--reply-line)') + ';background:' + (mine ? 'var(--mention-bg)' : 'var(--bg-t)') + ';color:var(--txt);font-size:13px;cursor:pointer;line-height:1.4;" title="' + (userNames || '') + '">' +
+        '<span>' + emoji + '</span><span style="font-weight:600;">' + users.length + '</span>' +
+      '</button>';
+    }).join('') +
+  '</div>';
+}
+
+function svgMarkupFromDataUrl(dataUrl) {
+  const match = String(dataUrl).match(/^data:image\/svg\+xml((?:;[^,]*)*),(.*)$/is);
+  if (!match) return null;
+  const metadata = match[1];
+  const payload = match[2];
+  try {
+    if (/(?:^|;)base64(?:;|$)/i.test(metadata)) {
+      const bytes = Uint8Array.from(atob(payload), character => character.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+    return decodeURIComponent(payload);
+  } catch (error) {
+    console.warn('Could not decode SVG attachment', error);
+    return null;
+  }
+}
+
+function interactiveSvgDocument(markup) {
+  const contentPolicy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'";
+  return '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="' + contentPolicy + '"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}body{display:grid;place-items:center}svg{display:block;width:100%;height:100%}</style></head><body>' + markup + '</body></html>';
+}
+
+    function renderMessageImage(message) {
+      const imgs = Array.isArray(message.images) ? message.images : (message.image ? [message.image] : []);
+      const files = Array.isArray(message.files) ? message.files : [];
+      const hasImages = imgs.length > 0;
+      const hasFiles = files.length > 0;
+      if (!hasImages && !hasFiles) return '';
+
+      let parts = [];
+
+      // Render images
+      if (imgs.length > 1) {
+        parts.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:4px;margin-top:4px;">' +
+          imgs.map(u => '<img src="' + escHtml(u) + '" alt="image" style="width:100%;border-radius:8px;display:block;cursor:pointer;aspect-ratio:1/1;object-fit:cover;" onclick="openLightbox(\'\' + escHtml(u) + \'\',\'\'Image\'\')">').join('') +
+          '</div>');
+      } else if (imgs.length === 1) {
+        const img = imgs[0];
+        const svgMarkup = svgMarkupFromDataUrl(img);
+        if (svgMarkup !== null) {
+          const srcdoc = interactiveSvgDocument(svgMarkup);
+          const imageWidth = Number(message.imageW);
+          const imageHeight = Number(message.imageH);
+          const hasDimensions = Number.isFinite(imageWidth) && imageWidth > 0 && Number.isFinite(imageHeight) && imageHeight > 0;
+          const aspectRatio = hasDimensions ? `${Math.min(imageWidth, 100000)} / ${Math.min(imageHeight, 100000)}` : '4 / 3';
+          parts.push(`<iframe class="interactive-svg" sandbox="allow-scripts" referrerpolicy="no-referrer" loading="lazy" title="Interactive SVG attachment" srcdoc="${escHtml(srcdoc)}" style="width:min(320px, 100%);height:auto;min-height:80px;max-height:60vh;aspect-ratio:${aspectRatio};"></iframe>`);
+        } else {
+          parts.push(`<img src="${escHtml(img)}" alt="image" style="max-width:min(320px, 100%);border-radius:8px;display:block;margin-top:4px;cursor:pointer;${message.imageW && message.imageH ? ' aspect-ratio:' + Number(message.imageW) + '/' + Number(message.imageH) + ';' : ''}" onclick="openLightbox('${escHtml(img)}','Image')">`);
+        }
+      }
+
+      // Render file attachments
+      if (hasFiles) {
+        parts.push('<div class="file-attachments" style="margin-top:4px;">' +
+          files.map(f => {
+            const sizeKB = (f.size / 1024).toFixed(1);
+            const sizeMB = (f.size / (1024 * 1024)).toFixed(2);
+            const sizeStr = f.size >= 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+            const isPreviewable = f.preview && f.preview.startsWith('data:');
+            return '<div class="file-attachment" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;border:1px solid var(--border);max-width:100%;">' +
+              '<div style="width:32px;height:32px;border-radius:4px;background:var(--mut);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><img src="/icons/attachment_icon.svg" alt="File" style="width:18px;height:18px;"></div>' +
+              '<div style="flex:1;min-width:0;">' +
+              '<div style="font-weight:600;color:var(--bright);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(f.name) + '</div>' +
+              '<div style="font-size:11px;color:var(--mut);">' + sizeStr + ' \u00b7 ' + escHtml(f.type || 'file') + '</div>' +
+              '</div>' +
+              '<a href="' + escHtml(f.preview) + '" download="' + escHtml(f.name) + '" style="flex-shrink:0;color:var(--bl);text-decoration:none;font-size:13px;">Download</a>' +
+              '</div>';
+          }).join('') +
+          '</div>');
+      }
+
+      return parts.join('');
+    }
+
+let pendingFiles = []; // array of {file, preview}
+
+function resetMessagePages(channel) {
+  // Save scroll state for previous channel
+  try {
+    if (activeMessagesChannel) {
+      localStorage.setItem('froggocord-pinned-' + activeMessagesChannel, String(msgsPinned));
+      localStorage.setItem('froggocord-scroll-' + activeMessagesChannel, String(chatMessageContainer.scrollTop));
+    }
+  } catch (e) {}
+  messagePages.forEach(page => page.unsubscribe && page.unsubscribe());
+  messagePages = [];
+  activeMessagesChannel = channel;
+  loadingOlderMessages = false;
+  hasOlderMessages = true;
+  messageHistoryError = '';
+  let savedPinned = true;
+  try {
+    const v = localStorage.getItem('froggocord-pinned-' + channel);
+    if (v !== null) savedPinned = (v === 'true');
+  } catch (e) {}
+  msgsPinned = (channel ? savedPinned : true);
+  window._restoredScrollFor = null;
+  if (chatMessageContainer._ro) { chatMessageContainer._ro.disconnect(); chatMessageContainer._ro = null; }
+}
+
+function renderMessagePages({ forceBottom = false, preserveScroll = false, contentAddedAbove = false } = {}) {
+  const previousHeight = chatMessageContainer.scrollHeight;
+  const previousTop = chatMessageContainer.scrollTop;
+  const byId = new Map();
+  messagePages.forEach(page => page.messages.forEach((message, id) => byId.set(id, message)));
+
+  const realClientIds = new Set();
+  byId.forEach(m => { if (m.clientMsgId) realClientIds.add(m.clientMsgId); });
+
+  const pendingForChannel = (typeof pendingMessages !== 'undefined' ? pendingMessages : []).filter(m =>
+    m.channel === activeMessagesChannel && !realClientIds.has(m.clientId)
+  );
+
+  const allMessages = [...byId.values(), ...pendingForChannel];
+  const docs = allMessages.sort((a, b) => {
+    const aTime = a.timestamp ? (typeof a.timestamp.toMillis === 'function' ? a.timestamp.toMillis() : (a._clientTimestamp || 0)) : (a._clientTimestamp || 0);
+    const bTime = b.timestamp ? (typeof b.timestamp.toMillis === 'function' ? b.timestamp.toMillis() : (b._clientTimestamp || 0)) : (b._clientTimestamp || 0);
+    return aTime - bTime;
+  });
+
+  window._unreadCounts = {};
+  docs.forEach(message => {
+    if (!message.channel) return;
+    const lastReadAt = lastRead[message.channel] || 0;
+    if ((message.timestamp ? message.timestamp.toMillis() : 0) > lastReadAt && message.user !== user) {
+      window._unreadCounts[message.channel] = (window._unreadCounts[message.channel] || 0) + 1;
+    }
+  });
+  renderSidebar();
+
+  const historyText = loadingOlderMessages
+    ? 'Loading older messages…'
+    : messageHistoryError || (!hasOlderMessages && docs.length ? 'Beginning of conversation' : (docs.length ? 'Scroll up for older messages' : ''));
+  const isPendingMsg = (m) => m && m.clientId && String(m.clientId).startsWith('pending_');
+  const lastReadAt = (typeof lastRead !== 'undefined' && activeMessagesChannel) ? (lastRead[activeMessagesChannel] || 0) : 0;
+  let firstUnreadIdx = -1;
+  docs.forEach((m, i) => {
+    if (firstUnreadIdx === -1 && !(m && m.clientId && String(m.clientId).startsWith('pending_')) && m.user !== user && m.timestamp && typeof m.timestamp.toMillis === 'function' && m.timestamp.toMillis() > lastReadAt) firstUnreadIdx = i;
+  });
+  chatMessageContainer.innerHTML = '<div class="msgs-inner"><div class="message-history-status" aria-live="polite">' + escHtml(historyText) + '</div>' + docs.map((m, index) => {
+    const pending = isPendingMsg(m);
+    const me = pending ? true : (m.user === user);
+    const safeUser = escHtml(m.user);
+    const av = (m.pfp && !m.pfp.startsWith('file:///')) ? `style="background-image:url('${escHtml(m.pfp)}');text-indent:-9999px;"` : '';
+    const rep = m.replyTo ? `<div class="msg-reply"><span class="bar"></span><span>Replying to <b>@${escHtml(m.replyTo.user)}</b> ${escHtml(m.replyTo.text)}</span></div>` : '';
+    const textVal = String(m.text ?? '');
+    const editedLabel = !pending && m.editedAt ? '<span class="msg-edited" style="cursor:pointer;color:var(--mut);font-size:11px;" onclick="window.viewEditHistory(\'' + m.id + '\')" title="Click to view edit history">(edited)</span>' : '';
+        // Link preview - loaded async below
+        let linkPreviewHtml = '';
+    const isP = textVal.includes('@everyone') || textVal.includes(`@${user}`);
+    const msgId = pending ? m.clientId : m.id;
+    let btns = (me && !pending) ? `<span data-action="edit" data-id="${m.id}" data-text="${escHtml(textVal)}" style="color:var(--bl);">Edit</span><span data-action="delete" data-id="${m.id}" style="color:var(--danger);">Delete</span>` : '';
+    const pinBtn = (!pending && (typeof canPinMessages === 'function' && canPinMessages())) ? `<span data-action="pin" data-id="${m.id}" style="color:var(--mut);">Pin</span>` : '';
+    if (pinBtn) btns = btns + pinBtn;
+    const copyLinkBtn = (!pending) ? `<span data-action="copylink" data-id="${m.id}" style="color:var(--mut);">Copy link</span>` : '';
+    if (copyLinkBtn) btns = btns + copyLinkBtn;
+    const threadBtn = (!pending) ? `<span data-action="thread" data-id="${m.id}" style="color:var(--mut);">Thread</span>` : '';
+    if (threadBtn) btns = btns + threadBtn;
+    const quoteBtn = (!pending) ? `<span data-action="quote" data-id="${m.id}" style="color:var(--mut);">Quote</span>` : '';
+    if (quoteBtn) btns = btns + quoteBtn;
+    const reportBtn = (!pending) ? `<span data-action="report" data-id="${m.id}" style="color:var(--mut);">Report</span>` : '';
+    if (reportBtn) btns = btns + reportBtn;
+    const rBtn = `<span data-action="reply" data-id="${m.id}" data-user="${safeUser}" style="color:var(--mut);">Reply</span>`;
+    const reactBtn = `<span data-action="react" data-id="${m.id}" style="color:var(--mut);"><img src="/icons/emoji_icon.svg" alt="React" style="width:16px;height:16px;"></span>`;
+    let statusHtml = '';
+    if (pending) {
+      if (m.status === 'sending') statusHtml = '<div class="msg-status sending">⏳ Sending…</div>';
+      else if (m.status === 'sent') statusHtml = '<div class="msg-status sent">✓ Sent</div>';
+      else statusHtml = '<div class="msg-status failed"><img src="/icons/warning.svg" alt="" aria-hidden="true"> Failed <button class="retry-btn" onclick="retryMessage(\'' + m.clientId + '\')">Retry</button></div>';
+    }
+    const unreadDivider = (index === firstUnreadIdx) ? '<div class="unread-divider" style="display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--danger);font-size:11px;font-weight:700;letter-spacing:.05em;"><span style="flex:1;height:1px;background:var(--danger);opacity:.6;"></span>NEW MESSAGES<span style="flex:1;height:1px;background:var(--danger);opacity:.6;"></span></div>' : '';
+    return unreadDivider + `
+      <div class="msg ${me ? 'me' : ''} ${isP ? 'mention' : ''} ${pending ? 'msg-pending' : ''} ${m.status === 'failed' ? 'msg-failed' : ''} ${m.replyTo ? 'has-reply' : ''}" data-id="${msgId}" data-user="${safeUser}" data-date="${m.timestamp && m.timestamp.toDate ? m.timestamp.toDate().toISOString().slice(0, 10) : ''}">
+        <div class="pfp" ${av} onclick="openProfile('${safeUser}')">${safeUser ? safeUser[0].toUpperCase() : '?'}</div>
+        <div class="msg-content">
+          ${rep}
+          <div class="msg-head">
+            <span class="msg-author ${me ? 'self' : ''}" onclick="openProfile('${safeUser}')" style="cursor:pointer;" onmouseenter="showUserHoverCard(event,'${safeUser}')" onmouseleave="hideUserHoverCard()">${safeUser}</span>
+            ${renderUserBadges(safeUser)}
+            <span class="msg-time">${pending ? 'just now' : fmtMsgTime(m.timestamp)}${editedLabel}</span>
+            <span class="msg-actions">${pending ? '' : reactBtn + rBtn + btns}</span>
+          </div>
+          ${textVal ? `<div class="msg-bubble">${renderText(textVal)}${linkPreviewHtml}</div>` : ''}
+          ${pending ? (m.images && m.images.length ? m.images.map(u => `<img src="${escHtml(u)}" alt="image" style="max-width: min(320px, 100%); border-radius:8px; display:block; margin-top:4px; opacity:0.7;">`).join('') : (m.image ? `<img src="${escHtml(m.image)}" alt="image" style="max-width: min(320px, 100%); border-radius:8px; display:block; margin-top:4px; opacity:0.7;">` : '')) : renderMessageImage(m)}
+          ${pending ? '' : renderReactions(m)}
+          ${statusHtml}
+        </div>
+      </div>`;
+  }).join('') + '</div>';
+
+  const inner = chatMessageContainer.querySelector('.msgs-inner');
+  if (inner) {
+    if (chatMessageContainer._ro) chatMessageContainer._ro.disconnect();
+    let previousInnerHeight = inner.scrollHeight;
+    let firstResize = true;
+    const observer = new ResizeObserver(() => {
+      const nextHeight = inner.scrollHeight;
+      const delta = nextHeight - previousInnerHeight;
+      if (!firstResize && delta !== 0) {
+        if (msgsPinned) chatMessageContainer.scrollTop = chatMessageContainer.scrollHeight;
+        else chatMessageContainer.scrollTop += delta;
+      }
+      firstResize = false;
+      previousInnerHeight = nextHeight;
+    });
+    observer.observe(inner);
+    chatMessageContainer._ro = observer;
+  }
+  observeChatImages();
+  docs.filter(message => Array.isArray(message.attachments) && !message._chunkedHydrated)
+    .forEach(message => { hydrateChunkedAttachments(message); });
+
+  const msgContainer = document.getElementById('message-container');
+  chatMessageContainer.querySelectorAll('img').forEach(img => {
+    if (!img.complete) img.addEventListener('load', () => {
+      if (msgContainer && typeof msgsPinned !== 'undefined' && msgsPinned &&
+          msgContainer.scrollHeight - msgContainer.scrollTop - msgContainer.clientHeight < 80) {
+        pinMsgsBottom();
+      }
+    }, { once: true });
+  });
+
+  if (preserveScroll) {
+    requestAnimationFrame(() => {
+      if (msgsPinned && !contentAddedAbove) {
+        pinMsgsBottom();
+      } else {
+        chatMessageContainer.scrollTop = previousTop + (contentAddedAbove ? chatMessageContainer.scrollHeight - previousHeight : 0);
+      }
+    });
+  }
+  if (forceBottom) {
+    msgsPinned = true;
+    pinMsgsBottom();
+    const pill = document.getElementById('new-messages-pill');
+    if (pill) pill.style.display = 'none';
+  } else if (!msgsPinned) {
+    const pill = document.getElementById('new-messages-pill');
+    if (pill) pill.style.display = 'block';
+  }
+  // Restore saved scroll position per channel (once per channel load)
+  if (!forceBottom && !msgsPinned && activeMessagesChannel && window._restoredScrollFor !== activeMessagesChannel) {
+    window._restoredScrollFor = activeMessagesChannel;
+    const saved = parseInt((() => { try { return localStorage.getItem('froggocord-scroll-' + activeMessagesChannel); } catch (e) { return null; } })() || '0', 10);
+    requestAnimationFrame(() => {
+      try { chatMessageContainer.scrollTop = Math.min(saved, chatMessageContainer.scrollHeight); } catch (e) {}
+    });
+  }
+}
+
+    // Render pinned messages bar
+    window.renderPinnedBar = async () => {
+      const bar = document.getElementById('pinned-bar');
+      if (!bar || !chan) { if (bar) bar.style.display = 'none'; return; }
+      try {
+        const snap = await getDocs(query(collection(db, 'pins'), where('channel', '==', chan)));
+        const pins = snap.docs.map(d => d.data());
+        if (!pins.length) { bar.style.display = 'none'; return; }
+        bar.style.display = 'block';
+        bar.innerHTML = '<span style="font-weight:600;margin-right:8px;"><img src="/icons/pin.svg" alt="" aria-hidden="true"> Pinned:</span>' + pins.map(p => {
+          const msg = messagePages[0]?.messages.get(p.messageId);
+          const text = msg ? (msg.text || '').slice(0, 50) : 'Message';
+          return '<span style="cursor:pointer;color:var(--bl);margin-right:8px;" onclick="window.jumpToMessage(' + p.messageId + ')">' + escHtml(text) + '</span>';
+        }).join('');
+      } catch (e) { bar.style.display = 'none'; }
+    };
+
+    window.refreshMessageTimestamps = () => {
+      renderMessagePages();
+      renderPinnedBar();
+    };
+
+    // Async link preview loader
+    window.loadLinkPreviews = async () => {
+      const messageContainer = document.getElementById('message-container');
+      if (!messageContainer) return;
+      const msgs = messageContainer.querySelectorAll('.msg');
+      for (const m of msgs) {
+        const textEl = m.querySelector('.msg-bubble');
+        if (!textEl) continue;
+        const text = textEl.textContent || '';
+        const match = text.match(/^https?:\/\/[^\s<]+/);
+        if (!match) continue;
+        const url = match[0];
+        if (m.querySelector('.link-preview')) continue;
+        try {
+          const data = await window.fetchLinkPreview(url);
+          if (data) {
+            const previewHtml = window.renderLinkPreview(url, data);
+            if (previewHtml) {
+              const wrapper = document.createElement('div');
+              wrapper.innerHTML = previewHtml;
+              textEl.appendChild(wrapper.firstChild);
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+    };
+
+function subscribeMessagePage(afterDocument = null) {
+  const channel = activeMessagesChannel;
+  const page = { channel, messages: new Map(), cursor: null, unsubscribe: null, ready: false };
+  messagePages.push(page);
+  const constraints = [
+    collection(db, 'messages'),
+    where('channel', '==', channel),
+    orderBy('timestamp', 'desc')
+  ];
+  if (afterDocument) constraints.push(startAfter(afterDocument));
+  constraints.push(limit(MESSAGE_PAGE_SIZE));
+
+  page.unsubscribe = onSnapshot(query(...constraints), snap => {
+    if (activeMessagesChannel !== channel || !messagePages.includes(page)) return;
+    const wasReady = page.ready;
+    const pageIndex = messagePages.indexOf(page);
+    const shouldPin = pageIndex === 0 && (
+      msgsPinned || snap.docChanges().some(change => change.type === 'added' && change.doc.data().user === user)
+    );
+    if (!wasReady) {
+      page.messages = new Map(snap.docs.map(document => [document.id, { id: document.id, ...document.data() }]));
+      page.cursor = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+      page.hasMore = snap.docs.length === MESSAGE_PAGE_SIZE;
+    } else {
+      const changes = snap.docChanges();
+      const added = changes.filter(change => change.type === 'added');
+      changes.forEach(change => {
+        if (change.type === 'added' || change.type === 'modified') {
+          page.messages.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
+        } else if (change.type === 'removed') {
+          const removedAt = change.doc.data().timestamp?.toMillis?.() || 0;
+          const wasPushedOutByNewerMessage = added.some(addedChange => {
+            const addedAt = addedChange.doc.data().timestamp?.toMillis?.() || 0;
+            return addedAt > removedAt;
+          });
+          if (!wasPushedOutByNewerMessage) page.messages.delete(change.doc.id);
+        }
+      });
+    }
+    page.ready = true;
+    if (pageIndex === messagePages.length - 1) {
+      loadingOlderMessages = false;
+      hasOlderMessages = page.hasMore;
+      messageHistoryError = '';
+    }
+    renderMessagePages({
+      forceBottom: shouldPin,
+      preserveScroll: pageIndex > 0 || (wasReady && !shouldPin),
+      contentAddedAbove: pageIndex > 0
+    });
+
+    if (pageIndex === 0) {
+      snap.docChanges().forEach(change => {
+        if (change.type !== 'added' || !user) return;
+        const message = change.doc.data();
+        const messageTime = message.timestamp ? message.timestamp.toMillis() : Date.now();
+        if (messageTime > appLoadTime && message.user && message.user !== user && document.hidden) {
+          const text = String(message.text ?? '');
+          const isMention = text.includes('@everyone') || text.includes(`@${user}`);
+          const hasImage = text.includes('<img') || !!message.image;
+          const isDM = message.channel && message.channel.startsWith('dm_');
+          const desktopEnabled = !settings || settings.notifications.desktop !== false;
+          const mentionsEnabled = !settings || settings.notifications.mentions !== false;
+          const dmEnabled = !settings || settings.notifications.dm !== false;
+          if (!desktopEnabled) return;
+          if (isMention && !mentionsEnabled) return;
+          if (isDM && !dmEnabled) return;
+          new Notification(isMention ? 'PINGED' : `@${message.user}`, {
+            body: hasImage ? 'Sent an image 📷' : text
+          });
+        }
+      });
+    }
+  }, error => {
+    if (activeMessagesChannel !== channel || !messagePages.includes(page)) return;
+    const pageIndex = messagePages.indexOf(page);
+    page.unsubscribe();
+    if (pageIndex > 0 || !page.ready) {
+      messagePages.splice(pageIndex, 1);
+    }
+    loadingOlderMessages = false;
+    messageHistoryError = pageIndex === 0 && !page.ready
+      ? 'Could not load messages. Scroll up to retry.'
+      : 'Could not load older messages. Scroll up to retry.';
+    renderMessagePages({ preserveScroll: pageIndex > 0 });
+    console.error('Message page listener failed', error);
+  });
+}
+
+function loadOlderMessages() {
+  if (loadingOlderMessages || !hasOlderMessages) return;
+  if (!messagePages.length) {
+    loadingOlderMessages = true;
+    messageHistoryError = '';
+    renderMessagePages({ preserveScroll: true });
+    subscribeMessagePage();
+    return;
+  }
+  const lastPage = messagePages[messagePages.length - 1];
+  if (!lastPage.ready || !lastPage.cursor) return;
+  loadingOlderMessages = true;
+  messageHistoryError = '';
+  renderMessagePages({ preserveScroll: true });
+  subscribeMessagePage(lastPage.cursor);
+}
+
+function listen() {
+  if (typingUnsub) { typingUnsub(); typingUnsub = null; }
+  setTyping(false);
+  if (!chan) {
+    resetMessagePages(null);
+    const container = document.getElementById('message-container');
+    if (mode === 'dms') {
+      container.innerHTML = '<div class="msgs-inner"><div class="msgs-empty">Select a user to start a DM</div></div>';
+    } else {
+      container.innerHTML = '<div class="msgs-inner"><div class="msgs-empty">Select a server from the rail to start chatting</div></div>';
+    }
+    return;
+  }
+  markRead(chan);
+
+  const key = chan + '__' + user;
+  getDoc(doc(db,'reads',key)).then((snap) => {
+    if (snap.exists()) lastRead[chan] = snap.data().lastRead ? snap.data().lastRead.toMillis() : Date.now();
+    renderSidebar();
+  }).catch(()=>{});
+
+  if (activeMessagesChannel !== chan) {
+    resetMessagePages(chan);
+    subscribeMessagePage();
+  }
+
+  const typingQuery = query(collection(db,'typing'), where('channel','==',chan));
+  let cachedTypingDocs = [];
+
+  function renderTyping() {
+    const now = Date.now();
+    const names = [];
+    cachedTypingDocs.forEach(d => {
+      const t = d.data();
+      if (!t || !t.user || t.user === user) return;
+      const ts = t.timestamp && t.timestamp.toMillis ? t.timestamp.toMillis() : 0;
+      if (!ts || now - ts > 5000) return;
+      names.push(t.user);
+    });
+    const el = document.getElementById('typing-indicator');
+    const hel = document.getElementById('header-typing');
+    if (names.length === 0) {
+      if (el) { el.style.display = 'none'; el.textContent = ''; }
+      if (hel) hel.textContent = '';
+    }
+    else if (names.length === 1) {
+      if (el) { el.style.display = 'block'; el.textContent = names[0] + ' is typing...'; }
+      if (hel) hel.textContent = names[0] + ' is typing...';
+    }
+    else if (names.length === 2) {
+      if (el) { el.style.display = 'block'; el.textContent = names[0] + ' and ' + names[1] + ' are typing...'; }
+      if (hel) hel.textContent = names[0] + ' and ' + names[1] + ' are typing...';
+    }
+    else {
+      if (el) { el.style.display = 'block'; el.textContent = names.length + ' people are typing...'; }
+      if (hel) hel.textContent = names.length + ' people are typing...';
+    }
+  }
+
+  typingUnsub = onSnapshot(typingQuery, (snap) => {
+    cachedTypingDocs = snap.docs;
+    renderTyping();
+  });
+
+  if (window._typingRefresh) clearInterval(window._typingRefresh);
+  window._typingRefresh = setInterval(renderTyping, 1000);
+}
+
+const atPopup = document.getElementById('at-popup');
+const chatInput = document.getElementById('chat-input');
+
+chatInput.addEventListener('blur', () => { if (user) setTyping(false); });
+chatInput.addEventListener('input', (e) => {
+  const val = e.target.value;
+  const at = val.lastIndexOf('@');
+  if (user && chan) {
+    if (val.trim()) { setTyping(true); } else { setTyping(false); }
+  }
+  if (at !== -1 && at === val.length - 1) {
+    const uList = knownUsers();
+    atPopup.innerHTML = ['everyone', ...uList].map(u => `<div style="cursor:pointer;padding:6px 12px;border-radius:4px;color:var(--white);" data-u="${escHtml(u)}" onmouseover="this.style.background='var(--bl)'" onmouseout="this.style.background='transparent'">@${escHtml(u)}</div>`).join('');
+    atPopup.style.display = 'flex';
+  } else if (!val.includes('@') || val.endsWith(' ')) { atPopup.style.display = 'none'; }
+});
+
+atPopup.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-u]');
+  if (el) window.insertAt(el.dataset.u);
+});
+
+window.insertAt = (u) => {
+  const val = chatInput.value;
+  const at = val.lastIndexOf('@');
+  chatInput.value = val.substring(0, at) + `@${u} `;
+  atPopup.style.display = 'none';
+  chatInput.focus();
+};
+
+window.handleKeyPress = (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    window.sendMessage();
+  }
+};
+
+document.getElementById('auth-submit-btn').addEventListener('click', () => {
+  const u = document.getElementById('auth-username').value.trim();
+  const p = document.getElementById('auth-password').value.trim();
+  if (!u || !p) { appAlert("Please enter both fields."); return; }
+  if (isSignUpMode) { createUserWithEmailAndPassword(window.auth, u + "@friends.com", p).catch(err => appAlert(err.message)); }
+  else { signInWithEmailAndPassword(window.auth, u + "@friends.com", p).catch(err => appAlert(err.message)); }
+});
+
+document.getElementById('auth-password-toggle').addEventListener('click', () => {
+  const passwordInput = document.getElementById('auth-password');
+  const toggle = document.getElementById('auth-password-toggle');
+  const isVisible = passwordInput.type === 'text';
+  passwordInput.type = isVisible ? 'password' : 'text';
+  toggle.textContent = isVisible ? 'Show' : 'Hide';
+  toggle.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
+  toggle.setAttribute('aria-pressed', String(!isVisible));
+});
+
+document.getElementById('auth-switch-btn').addEventListener('click', () => {
+  isSignUpMode = !isSignUpMode;
+  document.getElementById('auth-title').textContent = isSignUpMode ? 'Create Account' : 'Welcome Back';
+  document.getElementById('auth-submit-btn').textContent = isSignUpMode ? 'Sign Up' : 'Login';
+  document.getElementById('auth-switch-prompt').textContent = isSignUpMode ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('auth-switch-btn').textContent = isSignUpMode ? 'Login' : 'Sign up';
+});
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  if (!confirm('Are you sure you want to log out?')) return;
+  // Save any pending draft is already persisted; just sign out
+  signOut(window.auth);
+});
+
+const statusSel = document.getElementById('status-select');
+if (statusSel) {
+  statusSel.value = curStat;
+  statusSel.addEventListener('change', () => { updatePresence(statusSel.value); });
+}
+
+window.render = () => {};
+
+// Authentication starts after the feature scripts have registered their functions.
+onAuthStateChanged(window.auth, async (u) => {
+  if (u) {
+    user = u.email.split('@')[0];
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('my-pfp').textContent = user[0].toUpperCase();
+    document.getElementById('up-name').textContent = user;
+
+    if (Notification.permission !== "granted") Notification.requestPermission();
+
+    await setDoc(doc(db,"presence",user),{
+      user,
+      uid:(auth.currentUser&&auth.currentUser.uid)||null,
+      status:'online',
+      activity:curActivity || '',
+      lastActive:serverTimestamp()
+    }, {merge:true}).catch((e)=>{ console.error('presence write failed', e); });
+
+    setDoc(doc(db,"users",user),{
+      user,
+      uid:(auth.currentUser&&auth.currentUser.uid)||null,
+      lastSeen:serverTimestamp()
+    }, {merge:true}).catch(()=>{});
+
+    onSnapshot(collection(db,"users"),(snap)=>{
+      allUsers = [];
+      userPfpMap.clear();
+      userPrivacyMap.clear();
+
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.user) allUsers.push(data.user);
+        if (data.user && data.pfp && !String(data.pfp).startsWith('file:///')) userPfpMap.set(data.user, data.pfp);
+        if (data.user && data.banner && !String(data.banner).startsWith('file:///')) userBannerMap.set(data.user, data.banner);
+        if (data.user && data.background && !String(data.background).startsWith('file:///')) userBackgroundMap.set(data.user, data.background);
+        if (data.user && data.accent) userAccentMap.set(data.user, data.accent);
+        if (data.user && data.decoration) userDecorationMap.set(data.user, data.decoration);
+        if (data.user && data.badges) userBadgesMap.set(data.user, data.badges);
+        if (data.user && data.developerBadge) {
+          const badges = userBadgesMap.get(data.user) || [];
+          if (!badges.includes('developer')) userBadgesMap.set(data.user, badges.concat('developer'));
+        }
+        if (data.user && data.bgColor) userBgColorMap.set(data.user, data.bgColor);
+        if (data.user && data.textColor) userTextColorMap.set(data.user, data.textColor);
+        if (data.user && data.customStatus) userCustomStatusMap.set(data.user, data.customStatus);
+        if (data.user && data.pronouns) userPronounsMap.set(data.user, data.pronouns);
+        if (data.user && data.bio) userBioMap.set(data.user, data.bio);
+        if (data.user && data.displayName) userDisplayNameMap.set(data.user, data.displayName);
+        if (data.user && data.privacy) userPrivacyMap.set(data.user, data.privacy);
+      });
+
+      renderUserList();
+      if (mode === 'dms') renderSidebar();
+    }, (err) => { console.error('users snapshot failed', err); });
+
+    lastActivity = Date.now();
+    if (heartbeat) clearInterval(heartbeat);
+    idleNow = false;
+    heartbeat = setInterval(() => {
+      if (!user) return;
+      const active = document.visibilityState === 'visible' && (Date.now() - lastActivity < IDLE_MS);
+      if (active) { idleNow = false; updatePresence(curStat || 'online'); }
+      else { idleNow = true; }
+    }, 30000);
+
+    onSnapshot(collection(db,"presence"),(snap)=>{
+      const now = Date.now();
+      const all = [];
+      snap.docs.forEach(d => {
+        const p = d.data();
+        if (p.status === 'offline') { prunePresence(d.id); return; }
+        if (!('lastActive' in p)) { prunePresence(d.id); return; }
+        if (p.lastActive) {
+          const ms = p.lastActive.toMillis ? p.lastActive.toMillis() : 0;
+          if (!ms || now - ms > PRESENCE_TTL) { prunePresence(d.id); return; }
+        }
+        all.push(p);
+      });
+      lastPresenceUsers = all;
+      renderUserList();
+    });
+
+    onSnapshot(query(collection(db,"friends"),where("to","==",user)),(snap)=>{
+      const pending = snap.docs.filter(d => {
+        if (d.data().status !== "pending") return false;
+        const from = d.data().from;
+        const hasAccepted = snap.docs.some(d2 => d2.data().from === from && d2.data().status === "accepted");
+        return !hasAccepted;
+      });
+      document.getElementById('req-list').innerHTML = pending.map(d=>{
+        const data = d.data();
+        return `<div>${escHtml(data.from)} sent you a request <button onclick="acceptReq('${d.id}')" style="font-size:10px;padding:2px 6px;background:var(--bl);color:var(--accent-contrast);border:none;border-radius:3px;">Accept</button> <button onclick="declineReq('${d.id}')" style="font-size:10px;padding:2px 6px;background:var(--danger);color:var(--white);border:none;border-radius:3px;">Decline</button></div>`;
+      }).join('');
+    });
+
+    pfp = localStorage.getItem('pfp_'+user) || '';
+    if (pfp.startsWith('file:///')) { pfp = ''; localStorage.removeItem('pfp_'+user); }
+    if (pfp) {
+      document.getElementById('my-pfp').style.backgroundImage = `url(${pfp})`;
+      document.getElementById('my-pfp').textContent = '';
+    }
+
+    await setDoc(doc(db,"users",user),{
+      user,
+      pfp,
+      uid:(auth.currentUser&&auth.currentUser.uid)||null,
+      lastSeen:serverTimestamp()
+    }, {merge:true}).catch(()=>{});
+
+    document.getElementById('dm-btn').classList.add('active');
+    renderSidebar();
+    renderUserList();
+    updateHeader();
+    listen();
+    if (typeof checkAchievementBadges === 'function') checkAchievementBadges().catch(() => {});
+
+    loadServers().then(() => {
+      const params = new URLSearchParams(window.location.search);
+      const joinCode = params.get('join');
+      if (joinCode) { joinServer(joinCode); }
+
+      try {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'channel' && parts[1] && parts[2]) {
+          window.__skipPush = true;
+          const sid = parts[1];
+          const cname = decodeURIComponent(parts[2]);
+          setTimeout(() => {
+            if (typeof switchServerChannel === 'function') switchServerChannel(sid, cname);
+            else if (typeof switchServer === 'function') switchServer(sid);
+            window.__skipPush = false;
+          }, 0);
+        }
+      } catch (e) { window.__skipPush = false; }
+    });
+  } else {
+    if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
+    if (user) setDoc(doc(db,"presence",user),{status:'offline'},{merge:true});
+    document.getElementById('auth-overlay').style.display = 'flex';
+  }
+});
+
+window.acceptReq = async (id) => {
+  await updateDoc(doc(db,"friends",id),{status:"accepted"});
+  // Check for popular badge
+  try {
+    const snap = await getDocs(query(collection(db,"friends"), where("to","==",user)));
+    const snap2 = await getDocs(query(collection(db,"friends"), where("from","==",user)));
+    const all = [...snap.docs, ...snap2.docs];
+    const accepted = all.filter(d => d.data().status === "accepted");
+    const friends = new Set();
+    accepted.forEach(d => { friends.add(d.data().from); friends.add(d.data().to); });
+    friends.delete(user);
+    if (friends.size >= 10 && typeof awardBadge === 'function') {
+      awardBadge('popular');
+    }
+  } catch (e) {}
+};
+
+window.declineReq = async (id) => {
+  await updateDoc(doc(db,"friends",id),{status:"declined"});
+};
+
+window.sendReq = async (u) => {
+  if (!u || u === user) return;
+  try {
+    const pairId = [user, u].sort().join('__');
+    const existingDoc = await getDoc(doc(db, "friends", pairId));
+    if (existingDoc.exists()) {
+      const status = existingDoc.data().status;
+      if (status === "accepted" || status === "pending") return;
+    }
+    await setDoc(doc(db, "friends", pairId), {
+      from:user,
+      fromUid:(auth.currentUser&&auth.currentUser.uid)||null,
+      to:u,
+      toUid:null,
+      status:"pending",
+      timestamp:serverTimestamp()
+    });
+  } catch (e) { console.error("sendReq failed", e); }
+};
+
+window.cancelReq = async (id) => {
+  await updateDoc(doc(db,"friends",id),{status:"canceled"});
+};
+
+window.unfriendReq = async (id) => {
+  await updateDoc(doc(db,"friends",id),{status:"unfriended"});
+};
+
+
+    window.toggleSearch = () => {
+      const bar = document.getElementById('search-bar');
+      if (!bar) return;
+      if (bar.style.display === 'none' || !bar.style.display) {
+        bar.style.display = 'block';
+        const inp = document.getElementById('search-input');
+        if (inp) { inp.value = ''; inp.focus(); }
+      } else {
+        bar.style.display = 'none';
+        if (typeof renderMessagePages === 'function') renderMessagePages({ preserveScroll: true });
+      }
+    };
+
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      let searchTimer = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          const tokens = searchInput.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+          if (!tokens.length) {
+            const results = document.getElementById('search-results');
+            if (results) results.innerHTML = '';
+            if (typeof renderMessagePages === 'function') renderMessagePages({ preserveScroll: true });
+            return;
+          }
+          const messageContainer = document.getElementById('message-container');
+          if (!messageContainer) return;
+          const resultMatches = [];
+          const msgs = messageContainer.querySelectorAll('.msg');
+          msgs.forEach(m => {
+            const from = tokens.find(token => token.startsWith('from:'))?.slice(5);
+            const date = tokens.find(token => token.startsWith('date:'))?.slice(5);
+            const before = tokens.find(token => token.startsWith('before:'))?.slice(7);
+            const after = tokens.find(token => token.startsWith('after:'))?.slice(6);
+            const terms = tokens.filter(token => !token.startsWith('from:') && !token.startsWith('date:') && !token.startsWith('before:') && !token.startsWith('after:'));
+            const text = (m.textContent || '').toLowerCase();
+            const msgDate = m.dataset.date || '';
+            const isMatch = (!from || (m.dataset.user || '').toLowerCase() === from)
+              && (!date || msgDate === date)
+              && (!before || msgDate < before)
+              && (!after || msgDate > after)
+              && terms.every(term => text.includes(term));
+            if (isMatch) {
+              m.style.display = '';
+              m.style.background = 'var(--mention-bg)';
+              const bubble = m.querySelector('.msg-bubble');
+              resultMatches.push({ id: m.dataset.id, text: (bubble ? bubble.textContent : m.textContent).trim().slice(0, 100) });
+            } else {
+              m.style.display = 'none';
+            }
+          });
+          const results = document.getElementById('search-results');
+          if (results) {
+            results.innerHTML = matches.length
+              ? resultMatches.map(match => `<button type="button" class="search-result" data-message-id="${escHtml(match.id)}">${escHtml(match.text || 'Message')}</button>`).join('')
+              : '<span style="color:var(--mut);font-size:12px;">No loaded messages found.</span>';
+            results.querySelectorAll('.search-result').forEach(button => button.addEventListener('click', () => {
+              if (typeof window.jumpToMessage === 'function') window.jumpToMessage(button.dataset.messageId);
+            }));
+          }
+        }, 200);
+      });
+    }
+
+window.addEventListener('popstate', () => {
+  try {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'channel' && parts[1] && parts[2]) {
+      window.__skipPush = true;
+      const sid = parts[1];
+      const cname = decodeURIComponent(parts[2]);
+      if (typeof switchServerChannel === 'function') switchServerChannel(sid, cname);
+      window.__skipPush = false;
+    }
+  } catch (e) { window.__skipPush = false; }
+});
+
+
+    // Quote message functionality
+    window.quoteMessage = async (msgId) => {
+      const msgEl = document.querySelector(`[data-id="${msgId}"]`);
+      if (!msgEl) return;
+      const authorEl = msgEl.querySelector('.msg-author');
+      const textEl = msgEl.querySelector('.msg-bubble');
+      const author = authorEl ? authorEl.textContent : 'Unknown';
+      const text = textEl ? textEl.textContent : '';
+      const chatInput = document.getElementById('chat-input');
+      if (chatInput) {
+        chatInput.value = '> ' + author + ': ' + text + '\n';
+        chatInput.focus();
+      }
+    };
+
+    // Also add quote button to message actions when rendering
+    const originalRender = window.renderMessagePages;
+    window.renderMessagePages = async function() {
+      return originalRender.apply(this, arguments);
+    };
+
+
+    // ---------- Message drafts (auto-save) ----------
+    const DRAFT_KEY = 'froggocord-draft-';
+
+    function saveDraft(channel, text) {
+      try {
+        if (text.trim()) {
+          localStorage.setItem(DRAFT_KEY + channel, text);
+        } else {
+          localStorage.removeItem(DRAFT_KEY + channel);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function loadDraft(channel) {
+      try {
+        return localStorage.getItem(DRAFT_KEY + channel) || '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function clearDraft(channel) {
+      try {
+        localStorage.removeItem(DRAFT_KEY + channel);
+      } catch (e) { /* ignore */ }
+    }
+
+    // Auto-save draft on input
+    const chatInputEl = document.getElementById('chat-input');
+    if (chatInputEl) {
+      chatInputEl.addEventListener('input', () => {
+        if (chan) {
+          saveDraft(chan, chatInputEl.value);
+        }
+      });
+
+      // Restore draft on load
+      if (chan) {
+        const draft = loadDraft(chan);
+        if (draft) {
+          chatInputEl.value = draft;
+        }
+      }
+
+      // Clear draft after successful send
+      const origSend = window.sendMessage;
+      window.sendMessage = async function() {
+        const result = await origSend.apply(this, arguments);
+        if (chan) clearDraft(chan);
+        return result;
+      };
+    }

@@ -1,0 +1,9 @@
+/* FroggoCord theme: Crystal (Dark Blue) */
+:root {
+  --bg-p:#050a14; --bg-s:#0a1525; --bg-t:#081020; --chat:#0d1a30; --chat-hover:#152540; --hover:#1c3050; --active:#253a60;
+  --panel:#081220; --input:#102038; --txt:#b0c8e0; --bright:#d0e0f0; --mut:#7a9ab8; --bl:#2a7abf; --pr:#1a5a9f; --danger:#4a90d0; --yellow:#a0c0e0;
+  --scroll-thumb:#081020; --accent-contrast:#fff; --white:#fff; --shadow-line:rgba(0,0,0,.2); --banner-shade:rgba(0,0,0,.65); --banner-shadow:rgba(0,0,0,.8);
+  --border:#1c3050; --code-bg:#050a14; --mention-bg:rgba(42,122,191,.15); --spoiler-bg:#0a1525; --spoiler-glow:rgba(255,255,255,.6); --reply-line:#253a60; --highlight-bg:rgba(42,122,191,.06);
+  --overlay-shadow:rgba(0,0,0,.5); --overlay-bg:rgba(0,0,0,.7); --shadow-strong:rgba(0,0,0,.6); --shadow-soft:rgba(0,0,0,.12); --shadow-medium:rgba(0,0,0,.4); --context-bg:#050a14; --link:#4a90d0;
+  --swatch-a:#050a14; --swatch-b:#0d1a30; --swatch-c:#2a7abf;
+}

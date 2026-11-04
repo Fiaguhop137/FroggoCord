@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>FroggoCord</title>
+    <link rel="stylesheet" href="/style.css">
+    <link id="theme-stylesheet" rel="stylesheet" href="/themes/fulgurite.css">
+    <link rel="icon" href="/icons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+</head>
+<body>
+
+    <div id="network-status" style="display:none; position:fixed; top:0; left:0; right:0; padding:4px 12px; background:var(--danger); color:var(--white); font-size:12px; text-align:center; z-index:9999;">Reconnecting...</div>
+    <div id="error-toast" style="display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); padding:8px 16px; background:var(--danger); color:var(--white); font-size:13px; border-radius:8px; z-index:9999; max-width:400px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,.3);"></div>
+    <div id="server-modal" class="modal">
+    <div class="modal-card">
+        <h3>Add a Server</h3>
+        <div class="modal-tabs">
+        <button id="sm-create-tab" onclick="showServerTab('create')">Create</button>
+        <button id="sm-join-tab" onclick="showServerTab('join')">Join</button>
+        </div>
+        <div id="sm-create">
+        <label class="field-label">Server Name</label>
+        <input id="sm-name" class="inp2" placeholder="Server name">
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="createServerFromModal()">Create Server</button>
+        </div>
+        <div id="sm-join" style="display:none;">
+        <label class="field-label">Invite Code</label>
+        <input id="sm-code" class="inp2" placeholder="Invite code" style="text-transform:uppercase;">
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="joinServerFromModal()">Join Server</button>
+        </div>
+        <div id="sm-result"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeServerModal()">Close</button></div>
+    </div>
+    </div>
+
+    <div id="server-ctx">
+    <div id="ctx-invite" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'">Invite to Server</div>
+    <div id="ctx-settings" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'">Server Settings</div>
+    <div id="ctx-leave" style="color:var(--danger);" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'" onclick="leaveServerFromCtx()">Leave Server</div>
+    </div>
+
+    <div id="channel-ctx">
+    <div id="ctx-add-channel" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'" onclick="openChannelModalFromCtx()">Add Channel</div>
+    <div id="ctx-add-vc" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'" onclick="openChannelModalFromCtx('voice')">Add Voice Channel (VC)</div>
+    </div>
+
+    <div id="channel-create-modal" class="modal">
+    <div class="modal-card">
+        <h3>Add Channel</h3>
+        <label class="field-label">Channel Name</label>
+        <input id="cc-name" class="inp2" placeholder="channel-name">
+        <label class="field-label">Channel Type</label>
+        <select id="cc-type" class="inp2">
+            <option value="text">Text Channel</option>
+            <option value="voice">Voice Channel (VC)</option>
+        </select>
+        <label class="field-label">Category (optional)</label>
+        <input id="cc-category" class="inp2" placeholder="Category name">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+            <input type="checkbox" id="cc-private" style="margin:0;"> Private (restricted access)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+            <input type="checkbox" id="cc-nsfw" style="margin:0;"> NSFW (age-restricted)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+            <input type="checkbox" id="cc-announcement" style="margin:0;"> Announcement channel
+        </label>
+        <label class="field-label">Slow Mode (seconds, 0 for none)</label>
+        <input id="cc-slowmode" class="inp2" type="number" min="0" value="0">
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeChannelModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="createChannelFromModal()">Create Channel</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="server-settings-modal" class="modal">
+    <div class="modal-card">
+        <h3>Server Settings</h3>
+        <label class="field-label">Server Name</label>
+        <input id="ss-name" class="inp2">
+        <label class="field-label">Description</label>
+        <textarea id="ss-desc" class="inp2" rows="3"></textarea>
+        <label class="field-label">Welcome Message (shown to new members)</label>
+        <textarea id="ss-welcome" class="inp2" rows="2" placeholder="Welcome to the server!"></textarea>
+        <label class="field-label">Server Rules (one per line)</label>
+        <textarea id="ss-rules" class="inp2" rows="3" placeholder="1. Be respectful<br/>2. No spam"></textarea>
+        <button type="button" class="btn btn-secondary" onclick="viewServerRules()" style="margin-top:4px;font-size:11px;">View Rules</button>
+        <label class="field-label">Server Icon (image)</label>
+        <input id="ss-icon-file" type="file" accept="image/*" style="width:100%;margin:4px 0 8px;color:var(--txt);">
+        <input id="ss-icon-url" class="inp2" placeholder="or icon URL">
+        <label class="field-label">Banner (image)</label>
+        <input id="ss-banner-file" type="file" accept="image/*" style="width:100%;margin:4px 0 8px;color:var(--txt);">
+        <input id="ss-banner-url" class="inp2" placeholder="or banner URL">
+        <label class="field-label" for="ss-chat-bg">Chat background image URL</label>
+        <input id="ss-chat-bg" class="inp2" placeholder="https://...">
+        <label class="field-label" for="ss-accent">Server accent color</label>
+        <input type="color" id="ss-accent" value="#57f287" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="ss-public" style="margin:0;">
+        <span>Make server discoverable (public)</span>
+        </label>
+        <div id="ss-preview"></div>
+        <div id="ss-rules-display" style="margin-top:8px;padding:8px;background:var(--bg-t);border-radius:6px;font-size:12px;color:var(--mut);"></div>
+        <div id="ss-emojis-section">
+        <label class="field-label">Server Emojis (name:url, one per line)</label>
+        <textarea id="ss-emojis" class="inp2" rows="3" placeholder="party:https://.../party.png"></textarea>
+        </div>
+        <div id="ss-stickers-section">
+        <label class="field-label">Server Stickers (name:url, one per line)</label>
+        <textarea id="ss-stickers" class="inp2" rows="3" placeholder="wave:https://.../wave.png"></textarea>
+        </div>
+        <div id="ss-admins-section">
+        <label class="field-label">Members &amp; Roles</label>
+        <div id="ss-members"></div>
+        </div>
+        <div id="ss-events-section">
+        <label class="field-label">Events</label>
+        <button type="button" class="btn btn-secondary" onclick="createEvent()" style="margin-bottom:8px;">Create Event</button>
+        <div id="ss-events" style="max-height:160px;overflow:auto;font-size:12px;color:var(--mut);"></div>
+        </div>
+        <div id="ss-audit-section">
+        <label class="field-label">Audit Log</label>
+        <button type="button" class="btn btn-secondary" onclick="viewAuditLog()" style="margin-bottom:8px;">View Audit Log</button>
+        <div id="ss-audit" style="max-height:160px;overflow:auto;font-size:12px;color:var(--mut);"></div>
+        </div>
+        <div id="ss-stats-section">
+        <label class="field-label">Server Stats</label>
+        <button type="button" class="btn btn-secondary" onclick="viewServerStats()" style="margin-bottom:8px;">View Stats</button>
+        <div id="ss-stats" style="max-height:160px;overflow:auto;font-size:12px;color:var(--mut);"></div>
+        </div>
+        <div id="ss-webhook-section">
+        <label class="field-label">Webhooks</label>
+        <button type="button" class="btn btn-secondary" onclick="createWebhook()" style="margin-bottom:8px;">Create Webhook</button>
+        <button type="button" class="btn btn-secondary" onclick="saveServerTemplate()" style="margin-bottom:8px;margin-left:4px;">Save Template</button>
+        <button type="button" class="btn btn-secondary" onclick="applyServerTemplate()" style="margin-bottom:8px;margin-left:4px;">Apply Template</button>
+        <button type="button" class="btn btn-secondary" onclick="toggleTTS()" style="margin-bottom:8px;margin-left:4px;">Toggle TTS</button>
+        <div id="ss-webhooks" style="max-height:160px;overflow:auto;font-size:12px;color:var(--mut);"></div>
+        </div>
+        <div id="ss-appeals-section">
+        <label class="field-label">Ban Appeals</label>
+        <button type="button" class="btn btn-secondary" onclick="viewBanAppeals()" style="margin-bottom:8px;">View Appeals</button>
+        <div id="ss-appeals" style="max-height:160px;overflow:auto;font-size:12px;color:var(--mut);"></div>
+        </div>
+        <div class="modal-actions">
+        <button id="ss-delete-btn" class="btn btn-danger" onclick="deleteServer()" style="display:none;margin-right:auto;">Delete Server</button>
+<button id="ss-leave-btn" class="btn btn-secondary" onclick="leaveServer(currentServer || ctxServerId)" style="margin-right:auto;background:var(--yellow);color:var(--accent-contrast);">Leave Server</button>
+        <button class="btn btn-secondary" onclick="closeServerSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveServerSettings()">Save</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="invite-modal" class="modal">
+    <div class="modal-card">
+        <h3>Invite Friends to Server</h3>
+        <div id="invite-server-preview" style="margin-bottom:16px;"></div>
+        <label class="field-label">Select Friends to Invite</label>
+        <div id="invite-friends-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--hover);border-radius:4px;padding:8px;margin-bottom:12px;"></div>
+        <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeInviteModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="sendInvites()">Send Invites</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="app-dialog" class="modal" style="z-index:4000;">
+    <div class="modal-card">
+        <h3 id="dlg-title"></h3>
+        <div id="dlg-msg"></div>
+        <input id="dlg-input" class="inp2" style="display:none;margin-bottom:12px;">
+        <div class="modal-actions">
+        <button id="dlg-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="dlg-ok" class="btn btn-primary">OK</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="profile-modal" class="modal">
+    <div class="modal-card">
+        <div id="prof-banner" style="height:80px;border-radius:8px 8px 0 0;background:var(--bg-t);background-size:cover;background-position:center;margin:-16px -16px 12px -16px;"></div>
+        <div id="prof-avatar" class="pfp"></div>
+        <h3 id="prof-name"></h3>
+        <div id="prof-status"></div>
+        <div id="prof-badges" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;"></div>
+        <div id="prof-actions"></div>
+        <div class="modal-actions" style="justify-content:center;"><button class="btn btn-secondary" onclick="closeProfile()">Close</button></div>
+    </div>
+    </div>
+
+    <div id="settings-modal" class="modal" aria-hidden="true">
+    <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="settings-heading">
+        <h3 id="settings-title">Settings</h3>
+        <button id="settings-close" class="settings-close" type="button" aria-label="Close settings">✕</button>
+        </div>
+        <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button class="settings-tab active" id="settings-theme-tab" type="button" role="tab" aria-selected="true" aria-controls="settings-theme-panel">Theme</button>
+        <button class="settings-tab" id="settings-account-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-account-panel">Account</button>
+        <button class="settings-tab" id="settings-notifications-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-notifications-panel">Notifications</button>
+        <button class="settings-tab" id="settings-privacy-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-privacy-panel">Privacy</button>
+        <button class="settings-tab" id="settings-accessibility-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-accessibility-panel">Accessibility</button>
+        <button class="settings-tab" id="settings-profiles-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-profiles-panel">Profiles</button>
+        </div>
+        <section id="settings-theme-panel" class="settings-panel-section visible" role="tabpanel" aria-labelledby="settings-theme-tab">
+        <p class="settings-description">Choose a theme. Your selection applies immediately and is saved on this device.</p>
+        <div class="theme-options" role="radiogroup" aria-label="Color theme">
+            <button class="theme-option" type="button" role="radio" data-theme="ash" aria-checked="false"><span class="theme-swatch ash-swatch"></span><span>Ash</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="obsidian" aria-checked="false"><span class="theme-swatch obsidian-swatch"></span><span>Obsidian</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="magma" aria-checked="false"><span class="theme-swatch magma-swatch"></span><span>Magma</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="fulgurite" aria-checked="false"><span class="theme-swatch fulgurite-swatch"></span><span>Fulgurite</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="plasma" aria-checked="false"><span class="theme-swatch plasma-swatch"></span><span>Plasma</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="alpenglow" aria-checked="false"><span class="theme-swatch alpenglow-swatch"></span><span>Alpenglow</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="frostbite" aria-checked="false"><span class="theme-swatch frostbite-swatch"></span><span>Frostbite</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="phantom" aria-checked="false"><span class="theme-swatch phantom-swatch"></span><span>Phantom</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="crystal" aria-checked="false"><span class="theme-swatch crystal-swatch"></span><span>Crystal</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="verdant" aria-checked="false"><span class="theme-swatch verdant-swatch"></span><span>Verdant</span></button>
+            <button class="theme-option" type="button" role="radio" data-theme="custom" aria-checked="false" onclick="openCustomTheme()"><span class="theme-swatch custom-swatch"></span><span>Custom</span></button>
+        </div>
+        <div id="custom-theme-builder" style="display:none;margin-top:12px;padding:12px;background:var(--bg-t);border-radius:6px;">
+        <p class="settings-description" style="margin-bottom:8px;">Build your own color theme:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Background <input type="color" id="ct-bg-p" value="#1e1f22" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Sidebar <input type="color" id="ct-bg-s" value="#2b2d31" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Text <input type="color" id="ct-txt" value="#dbdee1" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Bright text <input type="color" id="ct-bright" value="#f2f3f5" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Accent <input type="color" id="ct-accent" value="#57f287" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Primary <input type="color" id="ct-primary" value="#23a55a" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Danger <input type="color" id="ct-danger" value="#da373c" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt);">Yellow <input type="color" id="ct-yellow" value="#f0b232" style="width:40px;height:28px;border:none;border-radius:4px;cursor:pointer;"></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeCustomTheme()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveCustomTheme()">Apply &amp; Save</button>
+        </div>
+        </div>
+        <div id="theme-status" class="theme-status" aria-live="polite"></div>
+        </section>
+        <section id="settings-account-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-account-tab">
+        <p class="settings-description">Manage your account details. Changes apply immediately.</p>
+        <label class="field-label">Username</label>
+        <input id="sa-username" class="inp2" readonly>
+        <label class="field-label">Status</label>
+        <select id="sa-status" class="inp2">
+            <option value="online">Online</option>
+            <option value="idle">Idle</option>
+            <option value="dnd">Do Not Disturb</option>
+        </select>
+        <label class="field-label">Activity / Playing</label>
+        <input id="sa-activity" class="inp2" placeholder="e.g. Playing FroggoCord...">
+        <label class="field-label">Avatar</label>
+        <input id="sa-avatar-file" type="file" accept="image/*" style="width:100%;margin:4px 0 8px;color:var(--txt);">
+        <div id="sa-avatar-preview" style="margin:8px 0;width:80px;height:80px;border-radius:50%;background:var(--bg-t);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--accent-contrast);">U</div>
+        </section>
+        <section id="settings-notifications-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-notifications-tab">
+        <p class="settings-description">Choose how and when you're notified.</p>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sn-desktop" style="margin:0;">
+        <span>Desktop notifications</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sn-sound" style="margin:0;">
+        <span>Message sound</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sn-mentions" style="margin:0;">
+        <span>Mention notifications (@everyone, @you)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sn-dm" style="margin:0;">
+        <span>Direct message notifications</span>
+        </label>
+        </section>
+        <section id="settings-privacy-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-privacy-tab">
+        <p class="settings-description">Control who can see your information and contact you.</p>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sp-online-status" style="margin:0;">
+        <span>Show online status to others</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sp-dm-anyone" style="margin:0;">
+        <span>Allow direct messages from anyone</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sp-activity" style="margin:0;">
+        <span>Show last active time</span>
+        </label>
+        </section>
+        <section id="settings-accessibility-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-accessibility-tab">
+        <p class="settings-description">Make FroggoCord easier to use.</p>
+        <label class="field-label">Font size</label>
+        <select id="sa-font-size" class="inp2">
+            <option value="small">Small</option>
+            <option value="medium" selected>Medium</option>
+            <option value="large">Large</option>
+        </select>
+        <label class="field-label" for="sa-time-format">Timestamp format</label>
+        <select id="sa-time-format" class="inp2">
+            <option value="system">System default</option>
+            <option value="12-hour">12-hour</option>
+            <option value="24-hour">24-hour</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sa-high-contrast" style="margin:0;">
+        <span>High contrast mode</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sa-reduced-motion" style="margin:0;">
+        <span>Reduce motion (disable animations)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sa-screen-reader" style="margin:0;">
+        <span>Screen reader announcements</span>
+        </label>
+        <p class="settings-description" style="margin-top:12px;">Source code can be found at <a href="https://github.com/benboilol/FroggoCord" target="_blank" rel="noopener noreferrer" style="color:var(--bl);text-decoration:underline;">https://github.com/benboilol/FroggoCord</a></p>
+        </section>
+        <section id="settings-profiles-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-profiles-tab">
+        <p class="settings-description">Customize your profile appearance.</p>
+        <label class="field-label" for="sp-display-name">Display name</label>
+        <input id="sp-display-name" class="inp2" placeholder="How your name appears" maxlength="32">
+        <label class="field-label" for="sp-custom-status">Custom status text</label>
+        <div style="display:flex;gap:4px;">
+        <input id="sp-custom-status" class="inp2" placeholder="What are you up to?" maxlength="128" style="flex:1;">
+        <button type="button" onclick="pickStatusEmoji()" style="width:36px;padding:8px;background:var(--bg-t);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--txt);" title="Choose status icon"><img src="/icons/emoji_icon.svg" alt="Choose status icon" style="width:16px;height:16px;"></button>
+        </div>
+        <label class="field-label" for="sp-pronouns">Pronouns</label>
+        <input id="sp-pronouns" class="inp2" placeholder="e.g. she/her, he/him, they/them" maxlength="32">
+        <label class="field-label" for="sp-bio">Biography</label>
+        <textarea id="sp-bio" class="inp2" rows="3" placeholder="Tell people about yourself..." maxlength="500"></textarea>
+        <label class="field-label" for="sp-profile-color">Profile color</label>
+        <input type="color" id="sp-profile-color" value="#57f287" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sp-profile-gradient-enabled" style="margin:0;">
+        <span>Enable gradient</span>
+        </label>
+        <label class="field-label" for="sp-profile-grad-from">Gradient from</label>
+        <input type="color" id="sp-profile-grad-from" value="#57f287" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label class="field-label" for="sp-profile-grad-to">Gradient to</label>
+        <input type="color" id="sp-profile-grad-to" value="#23a55a" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label class="field-label" for="sp-profile-grad-dir">Gradient direction</label>
+        <select id="sp-profile-grad-dir" class="inp2">
+            <option value="to right">Left to right</option>
+            <option value="to bottom">Top to bottom</option>
+            <option value="to bottom right">Diagonal</option>
+            <option value="135deg">135 deg</option>
+        </select>
+        <div id="sp-profile-preview" style="margin-top:12px;padding:12px;border-radius:8px;color:#fff;font-weight:600;">Preview Name</div>
+        <label class="field-label" for="sp-profile-banner-file">Profile banner image</label>
+        <input type="file" id="sp-profile-banner-file" accept="image/*" style="margin:8px 0;">
+        <div id="sp-profile-banner-preview" style="margin-top:8px;height:60px;border-radius:8px;background:var(--bg-t);background-size:cover;background-position:center;"></div>
+        <label class="field-label" for="sp-banner-position">Banner position</label>
+        <select id="sp-banner-position" class="inp2">
+            <option value="center">Center</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+        </select>
+        <label class="field-label" for="sp-banner-size">Banner size</label>
+        <select id="sp-banner-size" class="inp2">
+            <option value="cover">Cover (crop)</option>
+            <option value="contain">Contain (fit)</option>
+        </select>
+        <label class="field-label" for="sp-profile-bg">Profile background image URL</label>
+        <input id="sp-profile-bg" class="inp2" placeholder="https://...">
+        <label class="field-label" for="sp-profile-bg-file">Or upload background image</label>
+        <input type="file" id="sp-profile-bg-file" accept="image/*" style="margin:8px 0;">
+        <div id="sp-profile-bg-preview" style="margin-top:8px;height:60px;border-radius:8px;background:var(--bg-t);background-size:cover;background-position:center;"></div>
+        <button id="sp-reset-banner-bg" class="btn btn-secondary" type="button" style="margin-top:8px;">Reset Banner &amp; Background</button>
+        <label class="field-label" for="sp-bg-position">Background position</label>
+        <select id="sp-bg-position" class="inp2">
+            <option value="center">Center</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+        </select>
+        <label class="field-label" for="sp-bg-size">Background size</label>
+        <select id="sp-bg-size" class="inp2">
+            <option value="cover">Cover (crop)</option>
+            <option value="contain">Contain (fit)</option>
+        </select>
+        <label class="field-label" for="sp-profile-text-color">Profile text color</label>
+        <input type="color" id="sp-profile-text-color" value="#ffffff" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label class="field-label" for="sp-profile-bg-color">Profile background color</label>
+        <input type="color" id="sp-profile-bg-color" value="#1e1f22" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sp-profile-effect" style="margin:0;">
+        <span>Enable profile effects/animation</span>
+        </label>
+        <label class="field-label" for="sp-profile-effect-type">Effect type</label>
+        <select id="sp-profile-effect-type" class="inp2">
+            <option value="glow">Glow</option>
+            <option value="pulse">Pulse</option>
+            <option value="shimmer">Shimmer</option>
+            <option value="rainbow">Rainbow text</option>
+        </select>
+        <label class="field-label" for="sp-profile-accent">Custom accent color</label>
+        <input type="color" id="sp-profile-accent" value="#57f287" style="width:60px;height:36px;border:none;background:none;cursor:pointer;">
+        <label class="field-label" for="sp-profile-decoration">Profile decoration URL</label>
+        <input id="sp-profile-decoration" class="inp2" placeholder="https://.../decoration.png">
+        <label class="field-label" for="sp-app-bg">App background image URL</label>
+        <input id="sp-app-bg" class="inp2" placeholder="https://...">
+        <label class="field-label" for="sp-profile-layout">Profile layout</label>
+        <select id="sp-profile-layout" class="inp2">
+            <option value="default">Default</option>
+            <option value="compact">Compact</option>
+            <option value="spacious">Spacious</option>
+        </select>
+        <hr style="border:none;border-top:1px solid var(--bg-s);margin:16px 0;">
+        <label class="field-label">Chat density</label>
+        <select id="sa-chat-density" class="inp2">
+            <option value="cozy">Cozy (default)</option>
+            <option value="compact">Compact</option>
+        </select>
+        <label class="field-label">Auto-switch theme by time of day</label>
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+        <input type="checkbox" id="sa-auto-theme" style="margin:0;">
+        <span>Enable automatic theme switching</span>
+        </label>
+        <label class="field-label" for="sa-timezone">Timezone</label>
+        <select id="sa-timezone" class="inp2"></select>
+        <label class="field-label" for="sa-day-theme">Day theme</label>
+        <select id="sa-day-theme" class="inp2"></select>
+        <label class="field-label" for="sa-night-theme">Night theme</label>
+        <select id="sa-night-theme" class="inp2"></select>
+        <label class="field-label" for="sa-day-start">Day starts at (hour)</label>
+        <select id="sa-day-start" class="inp2"></select>
+        <label class="field-label" for="sa-night-start">Night starts at (hour)</label>
+        <select id="sa-night-start" class="inp2"></select>
+        </section>
+        <div class="modal-actions" style="justify-content:space-between;">
+        <button id="settings-reset" class="btn btn-danger" type="button" style="margin-left:auto;">Reset to defaults</button>
+        <button id="settings-done" class="btn btn-primary" type="button">Done</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="server-rules-modal" class="modal">
+    <div class="modal-card">
+        <h3 id="rules-title">Server Rules</h3>
+        <div id="rules-content" style="white-space:pre-wrap;font-size:13px;color:var(--mut);margin-bottom:16px;"></div>
+        <div class="modal-actions">
+        <button class="btn btn-primary" onclick="acceptServerRules()">I Accept</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="invite-modal" class="modal">
+    <div class="modal-card">
+        <h3>Invite to Server</h3>
+        <div style="margin:8px 0;">
+        <input id="invite-code-display" class="inp2" readonly style="font-family:monospace;">
+        <button type="button" class="btn btn-primary" onclick="copyInviteLink(currentServer)" style="margin-top:8px;">Copy Invite Link</button>
+        </div>
+        <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeInviteModal()">Close</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="discover-modal" class="modal">
+    <div class="modal-card">
+        <h3>Discover Servers</h3>
+        <input id="discover-search" class="inp2" placeholder="Search servers..." style="margin-bottom:8px;" oninput="filterDiscoverServers()">
+        <div id="discover-list" style="max-height:400px;overflow-y:auto;"></div>
+        <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDiscoverModal()">Close</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="auth-overlay">
+    <div class="auth-card">
+        <h2 id="auth-title">Welcome Back!</h2>
+        <p class="auth-sub" id="auth-sub">We're so excited to see you again!</p>
+        <label class="auth-label">Username</label>
+        <input type="text" id="auth-username" class="auth-input" placeholder="Username">
+        <label class="auth-label">Password</label>
+        <div class="auth-password-wrap">
+        <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+        <button type="button" id="auth-password-toggle" class="auth-password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
+        <button id="auth-submit-btn">Login</button>
+        <p style="margin-top: 16px; font-size: 14px;"><span id="auth-switch-prompt">Don't have an account?</span> <span id="auth-switch-btn">Sign up</span></p>
+    </div>
+    </div>
+
+    <div id="mobile-nav-backdrop" aria-hidden="true"></div>
+    <div class="sv" id="server-bar">
+    <div class="si" id="dm-btn" onclick="toggleDMView()" title="Direct Messages" style="font-size:22px;"><img src="/icons/froggocord_logo.svg" alt="Direct Messages" style="width: 22px; height: 22px;"></div>
+    <div class="si" id="discover-btn" onclick="openDiscoverModal()" title="Discover Servers" style="font-size:18px;background:var(--bg-t);display:flex;align-items:center;justify-content:center;cursor:pointer;"><img class="control-icon" src="/icons/discover_icon.svg" alt="Discover Servers"></div>
+    <div class="rail-divider"></div>
+    <div id="server-list"></div>
+    <div class="si add" id="add-server-btn" onclick="openServerModal()" title="Add a Server">+</div>
+    </div>
+
+    <div class="sb">
+    <div class="sb-header" id="sb-header">
+        <h3 id="sb-title">Channels</h3>
+        <span class="chev">▾</span>
+    </div>
+    <div id="server-banner">
+        <div class="banner-fade"></div>
+        <div id="server-banner-name"></div>
+        <span id="server-member-count" style="margin-left:8px;font-size:11px;color:var(--mut);"></span>
+    </div>
+    <div class="sb-scroll">
+        <div style="padding:4px 8px;">
+        <input id="member-search" class="inp2" placeholder="Search members..." style="font-size:12px;padding:4px 8px;" oninput="filterMembers()">
+        <select id="member-role-filter" class="inp2" style="font-size:12px;padding:4px 8px;margin-top:4px;" onchange="filterMembers()">
+            <option value="">All Roles</option>
+            <option value="owner">Owner</option>
+            <option value="admin">Admin</option>
+            <option value="member">Member</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+        </select>
+        </div>
+        <div class="ch">
+        <div class="cat">Servers</div>
+        <div class="rs-empty" style="padding:8px;">Select a server from the rail</div>
+        </div>
+    </div>
+    <div class="user-panel" id="pfp-dropzone">
+        <div class="up-avatar-wrap" onclick="document.getElementById('pfp-file-input').click()"><div id="my-pfp" class="pfp up-avatar">U</div></div>
+        <div class="up-info">
+        <div class="up-name" id="up-name"></div>
+        <select id="status-select" class="status-select">
+            <option value="online">Online</option>
+            <option value="idle">Idle</option>
+            <option value="dnd">Do Not Disturb</option>
+        </select>
+        </div>
+        <button id="settings-btn" class="up-btn" title="Settings" aria-label="Open settings"><img src="/icons/settings.svg" alt="" aria-hidden="true"></button>
+        <button id="logout-btn" class="up-btn" title="Logout"><img src="/icons/logout.svg" alt="" aria-hidden="true"></button>
+    </div>
+    </div>
+    <input type="file" id="pfp-file-input" accept="image/*" style="display:none;">
+
+    <div class="ca">
+    <div id="chat-header" class="chat-header"><button id="mobile-nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button><span class="hash">#</span><span class="hname">general</span></div>
+    <div id="pinned-bar" style="display:none; padding:4px 8px; background:var(--bg-t); border-bottom:1px solid var(--border); font-size:12px; color:var(--mut);"></div>
+    <div id="search-bar" style="display:none; padding:4px 8px; background:var(--bg-t); border-bottom:1px solid var(--border);">
+      <input id="search-input" type="text" placeholder="Search text, from:user, or date:YYYY-MM-DD..." style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--input);color:var(--txt);font-size:13px;">
+      <div id="search-results" style="max-height:160px;overflow:auto;"></div>
+    </div>
+    <div class="msgs" id="message-container"></div>
+    <div id="new-messages-pill" style="display:none; position:absolute; bottom:90px; left:50%; transform:translateX(-50%); background:var(--bl); color:var(--accent-contrast); padding:6px 14px; border-radius:16px; cursor:pointer; font-size:13px; font-weight:600; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,.3);">New messages <img src="/icons/arrow-down.svg" alt="" aria-hidden="true"></div>
+    <div id="reply-preview">
+        <div class="reply-bar">
+        <span>Replying to <span id="reply-user" style="font-weight:600;color:var(--bl);"></span></span>
+        <span class="close" onclick="cancelReply()">✕</span>
+        </div>
+    </div>
+    <div id="at-popup"></div>
+    <div id="reaction-picker" style="display:none; position:fixed; background:var(--bg-s); border-radius:8px; padding:6px; z-index:1003; box-shadow:0 8px 24px var(--overlay-shadow); max-width:260px; max-height:200px; overflow-y:auto; grid-template-columns:repeat(8,1fr); gap:2px;"></div>
+    <div id="lightbox" class="hidden" onclick="closeLightbox()">
+    <span id="lightbox-close" onclick="event.stopPropagation(); closeLightbox()">✕</span>
+    <img id="lightbox-img" src="" alt="enlarged">
+    <div id="lightbox-info"></div>
+    </div>
+    <div id="media-picker" style="display:none;">
+        <div class="tabs">
+        <button onclick="showTab('emojis')">Emojis</button>
+        <button onclick="showTab('gifs')">GIFs</button>
+        <button onclick="showTab('stickers')">Stickers</button>
+        </div>
+        <div id="emoji-tab"></div>
+        <div id="sticker-tab" style="display:none;flex-wrap:wrap;gap:6px;padding:8px;max-height:300px;overflow-y:auto;"></div>
+        <div id="gif-tab">
+        <input type="text" id="gif-search" placeholder="Search GIPHY...">
+        <div id="gif-results"></div>
+        </div>
+    </div>
+    <div class="composer-wrap">
+        <div id="typing-indicator" style="display:none; padding: 2px 0 6px; font-size:12px; color:var(--mut); font-style:italic; min-height:16px;"></div>
+        <div id="file-preview" style="display:none; padding: 0 0 8px;">
+        <div style="display:flex; align-items:center; gap:8px; background:var(--spoiler-bg); border-radius:6px; padding:6px 10px;">
+            <img id="file-preview-img" src="" alt="preview" style="max-height:60px; max-width:80px; border-radius:4px; object-fit:cover;">
+            <span id="file-preview-name" style="flex:1; font-size:13px; color:var(--txt); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+            <span style="cursor:pointer; color:var(--mut); font-weight:700; padding:4px;" onclick="cancelFile()">✕</span>
+        </div>
+        </div>
+        <div class="composer">
+        <input type="file" id="file-input" accept="image/*,.pdf,.txt,.csv,.zip,.json" multiple style="display:none;">
+        <button class="attach" title="Upload image or file" onclick="document.getElementById('file-input').click()"><img class="control-icon" src="/icons/attachment_icon.svg" alt="Upload image or file"></button>
+        <button class="plus" title="GIFs" onclick="document.getElementById('media-picker').style.display='flex';showTab('gifs')">+</button>
+        <textarea id="chat-input" placeholder="Message #general" rows="1" onkeydown="handleKeyPress(event)"></textarea>
+        <button id="emoji-btn" class="emoji" title="Emoji"><img class="control-icon" src="/icons/emoji_icon.svg" alt="Emoji"></button>
+        <button id="fav-gifs-btn" class="emoji" title="Favorite GIFs" onclick="showFavoriteGifs()"><img class="control-icon" src="/icons/star_icon.svg" alt="Favorite GIFs"></button>
+        <button id="soundboard-btn" class="emoji" title="Soundboard" onclick="toggleSoundboard()"><img class="control-icon" src="/icons/soundboard_icon.svg" alt="Soundboard"></button>
+        <button id="search-btn" class="emoji" title="Search messages" onclick="toggleSearch()"><img class="control-icon" src="/icons/search_icon.svg" alt="Search messages"></button>
+        <div id="soundboard-panel" style="display:none; position:absolute; bottom:60px; right:70px; width:260px; max-height:300px; overflow-y:auto; background:var(--bg-s); border-radius:8px; padding:8px; box-shadow:0 4px 16px rgba(0,0,0,.4); z-index:1000; border:1px solid var(--border);"></div>
+        <div id="fav-gifs-tooltip" style="display:none; position:absolute; bottom:60px; right:20px; width:320px; max-height:400px; overflow:auto; background:var(--bg-s); border-radius:8px; padding:8px; box-shadow:0 4px 16px rgba(0,0,0,.4); z-index:1000;"></div>
+        <button id="send-btn" class="send-btn" title="Send message" onclick="sendMessage()"><img src="/icons/send_message_icon.svg" alt="Send message" style="width: 22px; height: 22px;"></button>
+        </div>
+    </div>
+    </div>
+
+    <div class="rs" id="member-sidebar">
+    <h3 id="rs-title">Active Users</h3>
+    <div id="user-list"></div>
+    <h3 style="margin-top: 16px;">Requests</h3>
+    <div id="req-list"></div>
+    </div>
+<script type="module" src="/scripts/loader.js?v=20261030-login-fix"></script>
+</body>
+</html>
