@@ -159,7 +159,7 @@ window.getBadgeIconUrl = (badge) => {
     const MAX_PFP_BYTES = 500 * 1024; // 500KB cap so messages stay under Firestore 1MB limit
     const IDLE_MS = 120000;
     const PRESENCE_TTL = 24 * 60 * 60 * 1000;
-    const THEME_IDS = ['ash', 'obsidian', 'magma', 'fulgurite', 'plasma', 'alpenglow', 'frostbite', 'phantom', 'crystal', 'verdant', 'custom'];
+    const THEME_IDS = Object.freeze([...window.froggocordThemeIds]);
     const DEFAULT_THEME = 'fulgurite';
     const THEME_STORAGE_KEY = 'froggocord-theme';
     const themeLink = document.getElementById('theme-stylesheet');
@@ -173,65 +173,24 @@ window.getBadgeIconUrl = (badge) => {
       });
     }
 
-    const CUSTOM_THEME_KEY = 'froggocord-custom-theme';
-    const CUSTOM_THEME_DEFAULTS = {
-      bgP: '#1e1f22', bgS: '#2b2d31', txt: '#dbdee1', bright: '#f2f3f5',
-      accent: '#57f287', primary: '#23a55a', danger: '#da373c', yellow: '#f0b232'
-    };
-    let customThemeColors = { ...CUSTOM_THEME_DEFAULTS };
-    const CUSTOM_THEME_VARS = ['--bg-p','--bg-s','--bg-t','--chat','--chat-hover','--hover','--active','--panel','--input','--txt','--bright','--mut','--bl','--pr','--danger','--yellow','--swatch-a','--swatch-b','--swatch-c'];
-
-    function loadCustomTheme() {
-      try {
-        const raw = localStorage.getItem(CUSTOM_THEME_KEY);
-        if (raw) customThemeColors = { ...CUSTOM_THEME_DEFAULTS, ...JSON.parse(raw) };
-      } catch (e) {}
+    function renderThemeOptions() {
+      const container = document.getElementById('theme-options');
+      if (!container) return;
+      container.replaceChildren(...THEME_IDS.map(theme => {
+        const option = document.createElement('button');
+        option.className = 'theme-option';
+        option.type = 'button';
+        option.setAttribute('role', 'radio');
+        option.dataset.theme = theme;
+        option.setAttribute('aria-checked', 'false');
+        option.innerHTML = `<span class="theme-swatch ${theme}-swatch"></span><span>${theme[0].toUpperCase() + theme.slice(1)}</span>`;
+        return option;
+      }));
     }
 
-    function clearCustomThemeVars() {
-      const root = document.documentElement.style;
-      CUSTOM_THEME_VARS.forEach(v => root.removeProperty(v));
-    }
-
-    function applyCustomTheme(colors) {
-      const c = colors || customThemeColors;
-      const root = document.documentElement.style;
-      root.setProperty('--bg-p', c.bgP);
-      root.setProperty('--bg-s', c.bgS);
-      root.setProperty('--bg-t', c.bgP);
-      root.setProperty('--chat', c.bgP);
-      root.setProperty('--chat-hover', c.bgS);
-      root.setProperty('--hover', c.bgS);
-      root.setProperty('--active', c.bgS);
-      root.setProperty('--panel', c.bgP);
-      root.setProperty('--input', c.bgS);
-      root.setProperty('--txt', c.txt);
-      root.setProperty('--bright', c.bright);
-      root.setProperty('--mut', c.txt);
-      root.setProperty('--bl', c.accent);
-      root.setProperty('--pr', c.primary);
-      root.setProperty('--danger', c.danger);
-      root.setProperty('--yellow', c.yellow);
-      root.setProperty('--swatch-a', c.bgP);
-      root.setProperty('--swatch-b', c.bgS);
-      root.setProperty('--swatch-c', c.accent);
-      activeTheme = 'custom';
-      settings.theme = 'custom';
-      themeLink.dataset.theme = 'custom';
-      setThemeSelection('custom');
-    }
+    renderThemeOptions();
 
     function applyTheme(theme, persist = true) {
-      if (theme === 'custom') {
-        applyCustomTheme(customThemeColors);
-        if (persist) {
-          try { localStorage.setItem(THEME_STORAGE_KEY, 'custom'); } catch (e) {}
-        }
-        saveSettings();
-        return Promise.resolve(true);
-      }
-      // Clear any inline custom theme vars so the CSS file's :root takes over
-      clearCustomThemeVars();
       if (!THEME_IDS.includes(theme) || !themeLink) return Promise.resolve(false);
       if (theme === activeTheme && themeLink.dataset.theme === theme) {
         setThemeSelection(theme);
@@ -316,8 +275,7 @@ window.getBadgeIconUrl = (badge) => {
       if (storedTheme === 'alpenglow-dawn' || storedTheme === 'alpenglow-dusk') {
         savedTheme = 'alpenglow';
         localStorage.setItem(THEME_STORAGE_KEY, savedTheme);
-      }
-      else if (THEME_IDS.includes(storedTheme)) savedTheme = storedTheme;
+      } else if (THEME_IDS.includes(storedTheme)) savedTheme = storedTheme;
     } catch (e) {}
     /* ---------- settings state ---------- */
     const SETTINGS_DEFAULTS = {
@@ -589,55 +547,9 @@ window.getBadgeIconUrl = (badge) => {
       }
     }
 
-
-    function openCustomTheme() {
-      const builder = document.getElementById('custom-theme-builder');
-      if (!builder) return;
-      // populate with current colors
-      const c = customThemeColors;
-      document.getElementById('ct-bg-p').value = c.bgP;
-      document.getElementById('ct-bg-s').value = c.bgS;
-      document.getElementById('ct-txt').value = c.txt;
-      document.getElementById('ct-bright').value = c.bright;
-      document.getElementById('ct-accent').value = c.accent;
-      document.getElementById('ct-primary').value = c.primary;
-      document.getElementById('ct-danger').value = c.danger;
-      document.getElementById('ct-yellow').value = c.yellow;
-      builder.style.display = 'block';
-    }
-
-    function closeCustomTheme() {
-      const builder = document.getElementById('custom-theme-builder');
-      if (builder) builder.style.display = 'none';
-    }
-
-    function saveCustomTheme() {
-      customThemeColors = {
-        bgP: document.getElementById('ct-bg-p').value,
-        bgS: document.getElementById('ct-bg-s').value,
-        txt: document.getElementById('ct-txt').value,
-        bright: document.getElementById('ct-bright').value,
-        accent: document.getElementById('ct-accent').value,
-        primary: document.getElementById('ct-primary').value,
-        danger: document.getElementById('ct-danger').value,
-        yellow: document.getElementById('ct-yellow').value
-      };
-      try { localStorage.setItem(CUSTOM_THEME_KEY, JSON.stringify(customThemeColors)); } catch (e) {}
-      settings.theme = 'custom';
-      saveSettings();
-      applyCustomTheme(customThemeColors);
-      applyTheme('custom', false);
-      appAlert('Custom theme applied!');
-    }
-
-    window.openCustomTheme = openCustomTheme;
-    window.closeCustomTheme = closeCustomTheme;
-    window.saveCustomTheme = saveCustomTheme;
-
     function resetSettingsToDefaults() {
       settings = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS));
       saveSettings();
-      clearCustomThemeVars();
       document.body.classList.remove('high-contrast');
       populateSettingsForm();
       applySettings();
@@ -1411,7 +1323,6 @@ window.getBadgeIconUrl = (badge) => {
       } catch (e) { console.error(e); appAlert('Export failed.'); }
     };
 
-    loadCustomTheme();
     loadSettings();
     loadBlockedUsers();
     applySettings();

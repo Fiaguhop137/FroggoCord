@@ -2,6 +2,14 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
 import {getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
 window.froggocordFirebase={initializeApp,getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc};
+const themeDirectoryResponse = await fetch('/themes/', { cache: 'no-store' });
+if (!themeDirectoryResponse.ok) throw new Error(`Could not scan theme directory: ${themeDirectoryResponse.status}`);
+const themeDirectory = await themeDirectoryResponse.text();
+const themeIds = [...new Set([...themeDirectory.matchAll(/href=["']([^"']+\.css)["']/gi)]
+    .map(match => decodeURIComponent(match[1]).split('/').pop().replace(/\.css$/i, ''))
+    .filter(theme => /^[a-z0-9-]+$/.test(theme)))].sort();
+if (!themeIds.length) throw new Error('No theme CSS files found in theme directory');
+window.froggocordThemeIds = themeIds;
 const appScripts=[
     'app-core.js',
     'navigation-servers.js',
@@ -41,7 +49,7 @@ const monitoredAssets = [
     new URL(import.meta.url),
     new URL('../style.css', import.meta.url),
     ...appScripts.map((file) => new URL(file, import.meta.url)),
-    ...['ash', 'obsidian', 'magma', 'fulgurite', 'plasma', 'alpenglow', 'frostbite', 'phantom', 'crystal', 'verdant']
+    ...window.froggocordThemeIds
         .map((theme) => new URL(`../themes/${theme}.css`, import.meta.url))
 ];
 
