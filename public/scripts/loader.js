@@ -2,12 +2,11 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
 import {getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
 window.froggocordFirebase={initializeApp,getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc};
-const themeDirectoryResponse = await fetch('/themes/', { cache: 'no-store' });
-if (!themeDirectoryResponse.ok) throw new Error(`Could not scan theme directory: ${themeDirectoryResponse.status}`);
-const themeDirectory = await themeDirectoryResponse.text();
-const themeIds = [...new Set([...themeDirectory.matchAll(/href=["']([^"']+\.css)["']/gi)]
-    .map(match => decodeURIComponent(match[1]).split('/').pop().replace(/\.css$/i, ''))
-    .filter(theme => /^[a-z0-9-]+$/.test(theme)))].sort();
+const themeIndexResponse = await fetch('/themes/index.json', { cache: 'no-store' });
+if (!themeIndexResponse.ok) throw new Error(`Could not load theme index: ${themeIndexResponse.status}`);
+const themeIds = [...new Set(await themeIndexResponse.json())]
+    .filter(theme => typeof theme === 'string' && /^[a-z0-9-]+$/.test(theme))
+    .sort();
 if (!themeIds.length) throw new Error('No theme CSS files found in theme directory');
 window.froggocordThemeIds = themeIds;
 const appScripts=[

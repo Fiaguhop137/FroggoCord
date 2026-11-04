@@ -172,3 +172,4 @@
  - 20a6d-2026.11.04-07.44.00-0500: Redesigned all badge artwork with distinct large silhouettes and symbols (star, chat, code, people, envelope, palette, server, crown, speaker, compass, and more) instead of color-only variations; regenerated the AVIF outputs and visually verified the set.
  - 20a6d-2026.11.04-16.50.00-0500: Removed the custom theme builder and changed theme discovery to scan `/themes/` for every CSS file at startup; theme options and monitored assets now derive from the discovered files while preserving the requested removal of Crystal, Frostbite, and Verdant themes.
  - 20a6d-2026.11.04-16.52.00-0500: Removed the stale custom-theme startup call, verified all frontend scripts parse, and confirmed the runtime scan discovers every remaining theme CSS file.
+ - 20a6d-2026.11.04-17.02.00-0500: Added a deployment-compatible `public/themes/index.json` registry and updated startup theme loading to use it.
