@@ -225,17 +225,13 @@ window.getBadgeIconUrl = (badge) => {
     }
     window.closeMobileNav = closeMobileNav;
     window.openMobileNav = openMobileNav;
-    if (window.innerWidth <= 760) openMobileNav();
     mobileNavToggle.addEventListener('click', () => {
       if (document.body.classList.contains('mobile-nav-open')) closeMobileNav();
       else openMobileNav();
     });
-    let wasMobile = window.innerWidth <= 760;
+    mobileNavBackdrop.addEventListener('click', closeMobileNav);
     window.addEventListener('resize', () => {
-      const isMobile = window.innerWidth <= 760;
-      if (!isMobile) closeMobileNav();
-      else if (!wasMobile) openMobileNav();
-      wasMobile = isMobile;
+      if (window.innerWidth > 760) closeMobileNav();
     });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeMobileNav();

@@ -180,3 +180,5 @@
  - 20a6d-2026.11.05-07.57.00-0500: Hardened voice peer setup by queueing early ICE candidates and cleaning up per-peer signaling listeners when users leave.
  - 20a6d-2026.11.05-16.51.00-0500: Fixed oversized voice icons by constraining channel and VC panel icon dimensions, restored the voice channel name display, and adopted Ben’s relevant change to keep channel labels as `#name`.
  - 20a6d-2026.11.05-16.56.00-0500: Kept mobile navigation available by default, stopped server/channel clicks from auto-closing it, and reopened it automatically after returning from desktop-sized layouts.
+ - 20a6d-2026.11.05-17.04.00-0500: Separated mobile navigation behavior so the server icon rail stays permanently visible while the channel sidebar opens only from the three-line menu and closes normally.
+ - 20a6d-2026.11.05-17.05.00-0500: Offset the mobile chat area around the permanent server rail so the three-line channel-sidebar toggle remains reachable.
