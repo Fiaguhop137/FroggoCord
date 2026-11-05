@@ -81,6 +81,7 @@ img, button, span, input { border: none; outline: none; }
 .msg:hover .msg-actions { display: inline-flex; }
 .msg-actions span { cursor: pointer; }
 .channel-row { display: flex; align-items: center; gap: 2px; }
+.channel-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; flex-shrink: 0; }
 .channel-row .cb { flex: 1; min-width: 0; }
 .channel-controls { display: inline-flex; gap: 1px; }
 .channel-controls button { padding: 2px 4px; color: var(--mut); background: transparent; cursor: pointer; }
@@ -163,6 +164,8 @@ body.dm-mode .rs { display: none; }
 .member.off .member-avatar { filter: grayscale(100%); opacity: .55; }
 .member.off .member-name { color: var(--mut); }
 .member.off:hover .member-name { color: var(--txt); }
+.voice-channel-title { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--bright); font-size: 13px; font-weight: 700; }
+.voice-channel-title img, #voice-channel-panel button img { width: 16px; height: 16px; display: inline-block; flex-shrink: 0; vertical-align: middle; }
 #req-list { font-size: 13px; }
 #req-list .req { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; color: var(--txt); }
 #req-list button { background: var(--bl); color: var(--accent-contrast); border: none; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }

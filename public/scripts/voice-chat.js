@@ -334,7 +334,7 @@
     panel.style.cssText = 'position:fixed;bottom:60px;right:10px;background:var(--bg-s);border:1px solid var(--border);border-radius:8px;padding:12px;min-width:200px;max-width:300px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.4);';
 
     panel.innerHTML = `
-      <div style="font-weight:700;color:var(--bright);margin-bottom:8px;font-size:13px;"><img src="/icons/voice.svg" alt="" aria-hidden="true"> ${escHtml(cname)}</div>
+      <div class="voice-channel-title"><img src="/icons/voice.svg" alt="" aria-hidden="true"><span># ${escHtml(cname)}</span></div>
       <div id="voice-participants" style="margin-bottom:8px;font-size:12px;color:var(--txt);"></div>
       <div style="display:flex;gap:6px;">
         <button id="voice-mute-btn" onclick="window.toggleVoiceMute()" style="flex:1;padding:6px;border:none;border-radius:4px;background:var(--bl);color:var(--accent-contrast);cursor:pointer;font-size:12px;"><img src="/icons/voice.svg" alt="" aria-hidden="true"> Mute</button>

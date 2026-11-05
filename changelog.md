@@ -178,3 +178,4 @@
  - 1f89a-2026.11.04-20.49.00-0500: Replaced the broken black settings SVG with a visible 24px icon and normalized user-panel icon sizing.
  - 1f89a-2026.11.05-07.56.00-0500: Fixed voice channels by storing the participant channel ID, avoiding an unnecessary signaling composite index, and selecting one stable WebRTC offer initiator per peer.
  - 1f89a-2026.11.05-07.57.00-0500: Hardened voice peer setup by queueing early ICE candidates and cleaning up per-peer signaling listeners when users leave.
+ - 1f89a-2026.11.05-16.51.00-0500: Fixed oversized voice icons by constraining channel and VC panel icon dimensions, restored the voice channel name display, and adopted Ben’s relevant change to keep channel labels as `#name`.
