@@ -301,11 +301,6 @@ const REACTION_EMOJIS = ['👍','👎','❤️','😂','👮','😢','😡','�
 const messageEditHistory = new Map(); // msgId => [{ text, timestamp }]
 const RECENT_EMOJIS_KEY = 'froggocord-recent-emojis';
 
-function renderUserBadges(u) {
-  const badges = (typeof userBadgesMap !== 'undefined') ? userBadgesMap.get(u) : null;
-  if (!badges || !badges.length) return '';
-  return badges.map(b => `<img src="${getBadgeIconUrl(b)}" alt="${escHtml(b)}" title="${escHtml(b)}" style="width:18px;height:18px;border-radius:4px;margin-left:2px;vertical-align:middle;">`).join('');
-}
 let recentEmojis = [];
 try { recentEmojis = JSON.parse(localStorage.getItem(RECENT_EMOJIS_KEY) || '[]'); } catch (e) {}
 function addRecentEmoji(emoji) {
@@ -505,12 +500,11 @@ function renderMessagePages({ forceBottom = false, preserveScroll = false, conte
     const unreadDivider = (index === firstUnreadIdx) ? '<div class="unread-divider" style="display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--danger);font-size:11px;font-weight:700;letter-spacing:.05em;"><span style="flex:1;height:1px;background:var(--danger);opacity:.6;"></span>NEW MESSAGES<span style="flex:1;height:1px;background:var(--danger);opacity:.6;"></span></div>' : '';
     return unreadDivider + `
       <div class="msg ${me ? 'me' : ''} ${isP ? 'mention' : ''} ${pending ? 'msg-pending' : ''} ${m.status === 'failed' ? 'msg-failed' : ''} ${m.replyTo ? 'has-reply' : ''}" data-id="${msgId}" data-user="${safeUser}" data-date="${m.timestamp && m.timestamp.toDate ? m.timestamp.toDate().toISOString().slice(0, 10) : ''}">
-        <div class="pfp" ${av} onclick="openProfile('${safeUser}')">${safeUser ? safeUser[0].toUpperCase() : '?'}</div>
+        <div class="pfp" ${av} onclick="openProfile('${safeUser}')" onmouseenter="showUserHoverCard(event,'${safeUser}')" onmouseleave="hideUserHoverCard()">${safeUser ? safeUser[0].toUpperCase() : '?'}</div>
         <div class="msg-content">
           ${rep}
           <div class="msg-head">
-            <span class="msg-author ${me ? 'self' : ''}" onclick="openProfile('${safeUser}')" style="cursor:pointer;" onmouseenter="showUserHoverCard(event,'${safeUser}')" onmouseleave="hideUserHoverCard()">${safeUser}</span>
-            ${renderUserBadges(safeUser)}
+            <span class="msg-author ${me ? 'self' : ''}" onclick="openProfile('${safeUser}')" style="cursor:pointer;">${safeUser}</span>
             <span class="msg-time">${pending ? 'just now' : fmtMsgTime(m.timestamp)}${editedLabel}</span>
             <span class="msg-actions">${pending ? '' : reactBtn + rBtn + btns}</span>
           </div>

@@ -174,3 +174,4 @@
  - 20a6d-2026.11.04-16.52.00-0500: Removed the stale custom-theme startup call, verified all frontend scripts parse, and confirmed the runtime scan discovers every remaining theme CSS file.
  - 20a6d-2026.11.04-17.02.00-0500: Added a deployment-compatible `public/themes/index.json` registry and updated startup theme loading to use it.
  - 20a6d-2026.11.04-17.29.00-0500: Removed app-wide keyboard shortcut interception so browser shortcuts such as force reload remain available.
+ - 1f89a-2026.11.04-18.42.00-0500: Removed badge icons from normal chat message headers and moved hover-card badge discovery to message avatars; profile clicks continue to show full badges.
