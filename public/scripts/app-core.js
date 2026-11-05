@@ -1,35 +1,10 @@
-// Firebase SDK bindings are provided by loader.js before this classic script runs.
-const {
-  initializeApp,
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut,
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  limit,
-  startAfter,
-  serverTimestamp,
-  doc,
-  updateDoc,
-  deleteDoc,
-  setDoc,
-  where,
-  getDocs,
-  getDoc
-} = window.froggocordFirebase;
-
-    const config = { apiKey: "AIzaSyBdcQW56DH7tM37elwMYFQdzfpfCdEkzMs", authDomain: "froggocord.firebaseapp.com", projectId: "froggocord", storageBucket: "froggocord.firebasestorage.app", messagingSenderId: "237791448036", appId: "1:237791448036:web:82886ca5b0ce6dafa6d5f1", measurementId: "G-J7CRQ9D4VD" };
-    const app = initializeApp(config);
-const auth = getAuth(app);
-const db = getFirestore(app);
-window.auth = auth;
-window.db = db;
+const{initializeApp,getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc}=window.froggocordFirebase;
+const config={apiKey:"AIzaSyBdcQW56DH7tM37elwMYFQdzfpfCdEkzMs",authDomain:"froggocord.firebaseapp.com",projectId:"froggocord",storageBucket:"froggocord.firebasestorage.app",messagingSenderId:"237791448036",appId:"1:237791448036:web:82886ca5b0ce6dafa6d5f1",measurementId:"G-J7CRQ9D4VD" };
+const app=initializeApp(config);
+const auth=getAuth(app);
+const db=getFirestore(app);
+window.auth=auth;
+window.db=db;
 const badgeIconFiles = {
   developer: 'developer',
   'server-owner': 'server-owner',
