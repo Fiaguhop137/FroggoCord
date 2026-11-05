@@ -9,6 +9,8 @@
   let localStream = null;
   let peerConnections = {}; // username -> RTCPeerConnection
   let remoteAudioElements = {}; // username -> HTMLAudioElement
+  let pendingIceCandidates = {}; // username -> RTCIceCandidateInit[]
+  let peerSignalUnsubs = {}; // username -> unsubscribe function
   let isMuted = false;
   let participantUnsub = null;
   let signalUnsubs = [];
@@ -50,6 +52,7 @@
     // Register participant in Firestore
     try {
       await setDoc(doc(db, 'voiceParticipants', channelId + '__' + myUsername), {
+        channelId,
         serverId: sid,
         channelName: cname,
         username: myUsername,
@@ -84,6 +87,11 @@
       try { peerConnections[remoteUser].close(); } catch (e) {}
       delete peerConnections[remoteUser];
     });
+    Object.keys(peerSignalUnsubs).forEach(remoteUser => {
+      try { peerSignalUnsubs[remoteUser](); } catch (e) {}
+      delete peerSignalUnsubs[remoteUser];
+    });
+    pendingIceCandidates = {};
 
     // Remove remote audio elements
     Object.keys(remoteAudioElements).forEach(remoteUser => {
@@ -154,8 +162,9 @@
       participants.forEach(p => {
         if (p.username === myUsername) return;
         if (!peerConnections[p.username]) {
-          // New participant - create peer connection
-          createPeerConnection(p.username, channelId, true);
+          // Use a stable initiator so both peers do not create competing offers.
+          const isInitiator = myUsername < p.username;
+          createPeerConnection(p.username, channelId, isInitiator);
         }
       });
 
@@ -225,39 +234,19 @@
       }
     };
 
-    if (isInitiator) {
-      // Create offer
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        const offerDoc = {
-          channelId: channelId,
-          from: myUsername,
-          to: remoteUser,
-          type: 'offer',
-          sdp: pc.localDescription.sdp,
-          timestamp: serverTimestamp()
-        };
-        await addDoc(collection(db, 'voiceSignals'), offerDoc);
-      } catch (e) {
-        console.error('Failed to create offer:', e);
-      }
-    }
-
     // Listen for signals from this remote user
-    const signalQuery = query(collection(db, 'voiceSignals'),
-      where('channelId', '==', channelId),
-      where('to', '==', myUsername)
-    );
+    // Filter the recipient in the client to avoid requiring a composite index.
+    const signalQuery = query(collection(db, 'voiceSignals'), where('channelId', '==', channelId));
     const unsub = onSnapshot(signalQuery, async (snap) => {
       snap.docChanges().forEach(async (change) => {
         if (change.type !== 'added') return;
         const data = change.doc.data();
-        if (data.from !== remoteUser) return;
+        if (data.to !== myUsername || data.from !== remoteUser) return;
 
         try {
           if (data.type === 'offer') {
             await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+            await applyPendingIceCandidates(remoteUser, pc);
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             await addDoc(collection(db, 'voiceSignals'), {
@@ -270,9 +259,14 @@
             });
           } else if (data.type === 'answer') {
             await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+            await applyPendingIceCandidates(remoteUser, pc);
           } else if (data.type === 'ice') {
             const candidate = JSON.parse(data.candidate);
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            if (pc.remoteDescription) {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } else {
+              (pendingIceCandidates[remoteUser] ||= []).push(candidate);
+            }
           }
         } catch (e) {
           console.error('Signal handling error:', e);
@@ -280,13 +274,46 @@
       });
     });
     signalUnsubs.push(unsub);
+    peerSignalUnsubs[remoteUser] = unsub;
+
+    if (isInitiator) {
+      // Create the offer after the signal listener is active.
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await addDoc(collection(db, 'voiceSignals'), {
+          channelId,
+          from: myUsername,
+          to: remoteUser,
+          type: 'offer',
+          sdp: pc.localDescription.sdp,
+          timestamp: serverTimestamp()
+        });
+      } catch (e) {
+        console.error('Failed to create offer:', e);
+        closePeerConnection(remoteUser);
+      }
+    }
+  }
+
+  async function applyPendingIceCandidates(remoteUser, pc) {
+    const candidates = pendingIceCandidates[remoteUser] || [];
+    delete pendingIceCandidates[remoteUser];
+    for (const candidate of candidates) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
   }
 
   function closePeerConnection(remoteUser) {
+    if (peerSignalUnsubs[remoteUser]) {
+      try { peerSignalUnsubs[remoteUser](); } catch (e) {}
+      delete peerSignalUnsubs[remoteUser];
+    }
     if (peerConnections[remoteUser]) {
       try { peerConnections[remoteUser].close(); } catch (e) {}
       delete peerConnections[remoteUser];
     }
+    delete pendingIceCandidates[remoteUser];
     if (remoteAudioElements[remoteUser]) {
       try {
         remoteAudioElements[remoteUser].srcObject = null;

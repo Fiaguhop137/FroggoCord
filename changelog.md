@@ -176,3 +176,5 @@
  - 20a6d-2026.11.04-17.29.00-0500: Removed app-wide keyboard shortcut interception so browser shortcuts such as force reload remain available.
  - 1f89a-2026.11.04-18.42.00-0500: Removed badge icons from normal chat message headers and moved hover-card badge discovery to message avatars; profile clicks continue to show full badges.
  - 1f89a-2026.11.04-20.49.00-0500: Replaced the broken black settings SVG with a visible 24px icon and normalized user-panel icon sizing.
+ - 1f89a-2026.11.05-07.56.00-0500: Fixed voice channels by storing the participant channel ID, avoiding an unnecessary signaling composite index, and selecting one stable WebRTC offer initiator per peer.
+ - 1f89a-2026.11.05-07.57.00-0500: Hardened voice peer setup by queueing early ICE candidates and cleaning up per-peer signaling listeners when users leave.
