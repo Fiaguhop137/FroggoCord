@@ -595,7 +595,6 @@ async function manageChannelAccess(sid, cname) {
 }
 
 function renderChannelItem(server, channel) {
-  console.log('renderChannelItem called with channel:', channel.name, 'type:', channel.type);
   const active = chan === ('srv_' + server.id + '_' + channel.name);
   const canManage = canManageServer(server);
   const encodedName = encodeURIComponent(channel.name);
@@ -607,7 +606,6 @@ function renderChannelItem(server, channel) {
   const privateIcon = channel.private ? '<img class="channel-icon" src="/icons/lock.svg" alt="" aria-hidden="true"> ' : '';
   const announcementIcon = channel.announcement ? '<img class="channel-icon" src="/icons/note.svg" alt="" aria-hidden="true"> ' : '';
   const result = `<div class="channel-row" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;"><button class="cb ${active ? 'active' : ''}" onclick="switchServerChannel('${server.id}','${escHtml(channel.name)}')" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;">${privateIcon}${announcementIcon}${voiceIcon}# ${escHtml(channel.name)}</button>${voiceJoin}${unreadBadge('srv_' + server.id + '_' + channel.name)}${controls}</div>`;
-  console.log('renderChannelItem returning:', result.substring(0, 100));
   return result;
 }
 
@@ -1472,9 +1470,16 @@ document.getElementById('ctx-settings').onclick = (e) => {
 window.openLightbox = (url, label) => {
   const lb = document.getElementById('lightbox');
   const img = document.getElementById('lightbox-img');
+  const svg = document.getElementById('lightbox-svg');
   const info = document.getElementById('lightbox-info');
   if (!lb || !img) return;
-  img.src = url;
+  const isSvg = typeof url === 'string' && /^data:image\/svg\+xml(?:;[^,]*)?,/i.test(url);
+  img.classList.toggle('hidden', isSvg);
+  if (svg) {
+    svg.classList.toggle('hidden', !isSvg);
+    svg.src = isSvg ? url : '';
+  }
+  img.src = isSvg ? '' : url;
   info.textContent = label || '';
   lb.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -1483,9 +1488,14 @@ window.openLightbox = (url, label) => {
 window.closeLightbox = () => {
   const lb = document.getElementById('lightbox');
   const img = document.getElementById('lightbox-img');
+  const svg = document.getElementById('lightbox-svg');
   if (!lb) return;
   lb.classList.add('hidden');
   if (img) img.src = '';
+  if (svg) {
+    svg.src = '';
+    svg.classList.add('hidden');
+  }
   document.body.style.overflow = '';
 };
 

@@ -228,6 +228,7 @@ textarea.inp2 { resize: vertical; }
 #lightbox { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background: var(--context-bg); z-index: 5000; padding: 16px; cursor: zoom-out; }
 #lightbox.hidden { display: none; }
 #lightbox img { max-width: 95vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 40px var(--shadow-strong); cursor: zoom-out; }
+#lightbox iframe { width: min(95vw, 900px); height: min(90vh, 700px); border: 0; border-radius: 8px; box-shadow: 0 0 40px var(--shadow-strong); background: #fff; cursor: zoom-out; }
 #lightbox-close { position: absolute; top: 16px; right: 24px; color: var(--white); font-size: 30px; font-weight: 700; cursor: pointer; z-index: 5001; }
 #lightbox-info { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: var(--white); font-size: 13px; background: var(--overlay-shadow); padding: 4px 10px; border-radius: 4px; }
 .modal-tabs button { flex: 1; padding: 8px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-t); color: var(--txt); font-weight: 600; font-size: 14px; }

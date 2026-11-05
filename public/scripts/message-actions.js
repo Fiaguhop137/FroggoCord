@@ -497,6 +497,11 @@ ctxMenu.addEventListener('click', (e) => {
 });
 
 document.getElementById('message-container').addEventListener('click', (e) => {
+      const lightboxImage = e.target.closest('[data-lightbox-url]');
+      if (lightboxImage && typeof window.openLightbox === 'function') {
+        window.openLightbox(lightboxImage.dataset.lightboxUrl, 'Image');
+        return;
+      }
       const el = e.target.closest('[data-action]'); if (!el) return;
       const act = el.dataset.action, id = el.dataset.id || el.dataset.msgid;
       if (act === 'edit') window.editMsg(id, el.dataset.text || '');

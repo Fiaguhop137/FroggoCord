@@ -184,3 +184,6 @@
  - 20a6d-2026.11.05-17.05.00-0500: Offset the mobile chat area around the permanent server rail so the three-line channel-sidebar toggle remains reachable.
  - 20a6d-2026.11.05-17.17.00-0500: Grouped mobile composer tools behind a three-line menu while keeping the message input and send button directly available.
  - 20a6d-2026.11.05-17.24.00-0500: Preserved uploaded SVG files as SVG data URLs instead of converting them to AVIF, and rendered them directly as images without sandboxed iframe handling.
+ - 20a6d-2026.11.05-17.37.00-0500: Fixed voice-channel teardown attempting to delete other users’ signaling records, awaited permitted signal cleanup, and removed noisy channel-render debug logging.
+ - 20a6d-2026.11.05-17.45.00-0500: Added isolated SVG execution using opaque-origin sandboxed frames for chat previews and the image lightbox; SVG scripts cannot access the app origin or Firebase session.
+ 

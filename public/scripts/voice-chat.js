@@ -121,8 +121,11 @@
     // Clean up signals
     try {
       const signalsSnap = await getDocs(query(collection(db, 'voiceSignals'), where('channelId', '==', channelId)));
-      signalsSnap.forEach(d => { try { deleteDoc(d.ref); } catch (e) {} });
-    } catch (e) {}
+      const ownSignals = signalsSnap.docs.filter(d => d.data().to === myUsername);
+      await Promise.all(ownSignals.map(d => deleteDoc(d.ref)));
+    } catch (e) {
+      console.warn('Failed to remove voice signals:', e);
+    }
 
     currentVoiceChannel = null;
     isMuted = false;

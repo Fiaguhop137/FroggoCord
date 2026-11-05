@@ -327,6 +327,17 @@ function renderReactions(m) {
   '</div>';
 }
 
+    function isSvgDataUrl(url) {
+      return typeof url === 'string' && /^data:image\/svg\+xml(?:;[^,]*)?,/i.test(url);
+    }
+
+    function renderImageElement(url, style) {
+      if (isSvgDataUrl(url)) {
+        return '<iframe src="' + escHtml(url) + '" sandbox="allow-scripts" referrerpolicy="no-referrer" data-lightbox-url="' + escHtml(url) + '" title="SVG image" style="' + style + 'height:100%;min-height:120px;border:0;cursor:pointer;"></iframe>';
+      }
+      return '<img src="' + escHtml(url) + '" data-lightbox-url="' + escHtml(url) + '" alt="image" style="' + style + '">';
+    }
+
     function renderMessageImage(message) {
       const imgs = Array.isArray(message.images) ? message.images : (message.image ? [message.image] : []);
       const files = Array.isArray(message.files) ? message.files : [];
@@ -339,11 +350,11 @@ function renderReactions(m) {
       // Render images
       if (imgs.length > 1) {
         parts.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:4px;margin-top:4px;">' +
-          imgs.map(u => '<img src="' + escHtml(u) + '" alt="image" style="width:100%;border-radius:8px;display:block;cursor:pointer;aspect-ratio:1/1;object-fit:cover;" onclick="openLightbox(\'\' + escHtml(u) + \'\',\'\'Image\'\')">').join('') +
+          imgs.map(u => renderImageElement(u, 'width:100%;height:100%;border-radius:8px;display:block;aspect-ratio:1/1;object-fit:cover;')).join('') +
           '</div>');
       } else if (imgs.length === 1) {
         const img = imgs[0];
-        parts.push(`<img src="${escHtml(img)}" alt="image" style="max-width:min(320px, 100%);border-radius:8px;display:block;margin-top:4px;cursor:pointer;${message.imageW && message.imageH ? ' aspect-ratio:' + Number(message.imageW) + '/' + Number(message.imageH) + ';' : ''}" onclick="openLightbox('${escHtml(img)}','Image')">`);
+        parts.push(renderImageElement(img, `max-width:min(320px, 100%);width:${isSvgDataUrl(img) ? 'min(320px, 100%)' : 'auto'};height:auto;min-height:120px;border-radius:8px;display:block;margin-top:4px;${message.imageW && message.imageH ? ' aspect-ratio:' + Number(message.imageW) + '/' + Number(message.imageH) + ';' : ''}`));
       }
 
       // Render file attachments
