@@ -50,7 +50,8 @@ img, button, span, input { border: none; outline: none; }
 .up-name { font-size: 13px; font-weight: 600; color: var(--bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status-select { background: transparent; border: none; color: var(--mut); font-size: 11px; cursor: pointer; outline: none; padding: 0; max-width: 110px; }
 .status-select option { background: var(--bg-p); color: var(--txt); }
-.up-btn { background: transparent; border: none; color: var(--txt); cursor: pointer; padding: 6px; border-radius: 4px; font-size: 16px; line-height: 1; }
+.up-btn { background: transparent; border: none; color: var(--txt); cursor: pointer; padding: 6px; border-radius: 4px; font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.up-btn img { width: 18px; height: 18px; display: block; }
 .up-btn:hover { background: var(--hover); }
 
 /* ---------- chat ---------- */
