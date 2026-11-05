@@ -236,6 +236,14 @@ window.getBadgeIconUrl = (badge) => {
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeMobileNav();
     });
+    window.toggleComposerTools = () => {
+      const composer = document.querySelector('.composer');
+      const toggle = document.getElementById('composer-tools-toggle');
+      if (!composer || !toggle) return;
+      const expanded = composer.classList.toggle('composer-tools-open');
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-label', expanded ? 'Hide message tools' : 'Show message tools');
+    };
     document.getElementById('settings-close').addEventListener('click', closeSettings);
     document.getElementById('settings-done').addEventListener('click', closeSettings);
     document.getElementById('settings-modal').addEventListener('click', event => {

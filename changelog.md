@@ -182,3 +182,5 @@
  - 20a6d-2026.11.05-16.56.00-0500: Kept mobile navigation available by default, stopped server/channel clicks from auto-closing it, and reopened it automatically after returning from desktop-sized layouts.
  - 20a6d-2026.11.05-17.04.00-0500: Separated mobile navigation behavior so the server icon rail stays permanently visible while the channel sidebar opens only from the three-line menu and closes normally.
  - 20a6d-2026.11.05-17.05.00-0500: Offset the mobile chat area around the permanent server rail so the three-line channel-sidebar toggle remains reachable.
+ - 20a6d-2026.11.05-17.17.00-0500: Grouped mobile composer tools behind a three-line menu while keeping the message input and send button directly available.
+ - 20a6d-2026.11.05-17.24.00-0500: Preserved uploaded SVG files as SVG data URLs instead of converting them to AVIF, and rendered them directly as images without sandboxed iframe handling.

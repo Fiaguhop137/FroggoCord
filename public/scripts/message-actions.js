@@ -142,7 +142,7 @@ if (fileInputEl) {
     return false;
   };
   const preferAvif = async (file) => {
-    if (file.type === 'image/avif') return file;
+    if (file.type === 'image/avif' || file.type === 'image/svg+xml') return file;
     const converted = await window.convertImageToAvif(file);
     if (!converted) throw new Error('This browser cannot encode images as AVIF.');
     return converted;

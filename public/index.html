@@ -557,13 +557,16 @@
         </div>
         <div class="composer">
         <input type="file" id="file-input" accept="image/*,.pdf,.txt,.csv,.zip,.json" multiple style="display:none;">
+        <button id="composer-tools-toggle" class="composer-tools-toggle" type="button" title="More message tools" aria-label="Show message tools" aria-expanded="false" onclick="toggleComposerTools()">☰</button>
+        <div id="composer-tools" class="composer-tools">
         <button class="attach" title="Upload image or file" onclick="document.getElementById('file-input').click()"><img class="control-icon" src="/icons/attachment_icon.svg" alt="Upload image or file"></button>
         <button class="plus" title="GIFs" onclick="document.getElementById('media-picker').style.display='flex';showTab('gifs')">+</button>
-        <textarea id="chat-input" placeholder="Message #general" rows="1" onkeydown="handleKeyPress(event)"></textarea>
         <button id="emoji-btn" class="emoji" title="Emoji"><img class="control-icon" src="/icons/emoji_icon.svg" alt="Emoji"></button>
         <button id="fav-gifs-btn" class="emoji" title="Favorite GIFs" onclick="showFavoriteGifs()"><img class="control-icon" src="/icons/star_icon.svg" alt="Favorite GIFs"></button>
         <button id="soundboard-btn" class="emoji" title="Soundboard" onclick="toggleSoundboard()"><img class="control-icon" src="/icons/soundboard_icon.svg" alt="Soundboard"></button>
         <button id="search-btn" class="emoji" title="Search messages" onclick="toggleSearch()"><img class="control-icon" src="/icons/search_icon.svg" alt="Search messages"></button>
+        </div>
+        <textarea id="chat-input" placeholder="Message #general" rows="1" onkeydown="handleKeyPress(event)"></textarea>
         <div id="soundboard-panel" style="display:none; position:absolute; bottom:60px; right:70px; width:260px; max-height:300px; overflow-y:auto; background:var(--bg-s); border-radius:8px; padding:8px; box-shadow:0 4px 16px rgba(0,0,0,.4); z-index:1000; border:1px solid var(--border);"></div>
         <div id="fav-gifs-tooltip" style="display:none; position:absolute; bottom:60px; right:20px; width:320px; max-height:400px; overflow:auto; background:var(--bg-s); border-radius:8px; padding:8px; box-shadow:0 4px 16px rgba(0,0,0,.4); z-index:1000;"></div>
         <button id="send-btn" class="send-btn" title="Send message" onclick="sendMessage()"><img src="/icons/send_message_icon.svg" alt="Send message" style="width: 22px; height: 22px;"></button>

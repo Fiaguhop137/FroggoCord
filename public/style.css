@@ -129,6 +129,8 @@ body.compact .msg-bubble .embed.embed-twitter iframe { height: 220px; }
 /* ---------- composer ---------- */
 .composer-wrap { padding: 0 16px 24px; flex-shrink: 0; }
 .composer { background: var(--input); border-radius: 8px; display: flex; align-items: center; padding: 0 8px 0 16px; gap: 8px; }
+.composer-tools { display: contents; }
+.composer-tools-toggle { display: none; }
 .composer .plus { background: var(--mut); color: var(--input); border-radius: 50%; width: 22px; height: 22px; border: none; font-weight: 700; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .composer .plus:hover { background: var(--txt); }
 .composer .attach { background: transparent; border: none; font-size: 20px; cursor: pointer; color: var(--mut); padding: 4px; line-height: 1; flex-shrink: 0; }
@@ -328,7 +330,12 @@ body.high-contrast .msg-bubble .spoiler { background:#000; color:#fff; text-shad
   .msg-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 0; font-size: 12px; }
   .msg-actions span { display: inline-flex; min-height: 28px; align-items: center; }
   .composer-wrap { padding: 0 10px calc(8px + env(safe-area-inset-bottom)); }
-  .composer { gap: 5px; padding: 0 6px 0 8px; }
+  .composer { gap: 5px; padding: 0 6px 0 8px; position: relative; }
+  .composer-tools-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--mut); cursor: pointer; font-size: 22px; line-height: 1; }
+  .composer-tools-toggle:hover, .composer-tools-toggle:focus-visible { background: var(--hover); color: var(--txt); }
+  .composer-tools { display: none; position: absolute; left: 6px; bottom: calc(100% + 6px); z-index: 1001; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-s); box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  .composer-tools-open .composer-tools { display: flex; }
+  .composer-tools .attach, .composer-tools .emoji { min-width: 36px; min-height: 36px; }
   .composer .attach, .composer .emoji { min-width: 36px; min-height: 42px; font-size: 19px; }
   .composer .plus { width: 26px; height: 26px; }
   .composer input, .composer textarea, #gif-search { font-size: 16px; }
