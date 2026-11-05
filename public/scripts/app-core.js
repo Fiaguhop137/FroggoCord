@@ -218,15 +218,24 @@ window.getBadgeIconUrl = (badge) => {
       mobileNavToggle.setAttribute('aria-expanded', 'false');
       mobileNavToggle.setAttribute('aria-label', 'Open navigation');
     }
+    function openMobileNav() {
+      document.body.classList.add('mobile-nav-open');
+      mobileNavToggle.setAttribute('aria-expanded', 'true');
+      mobileNavToggle.setAttribute('aria-label', 'Close navigation');
+    }
     window.closeMobileNav = closeMobileNav;
+    window.openMobileNav = openMobileNav;
+    if (window.innerWidth <= 760) openMobileNav();
     mobileNavToggle.addEventListener('click', () => {
-      const isOpen = document.body.classList.toggle('mobile-nav-open');
-      mobileNavToggle.setAttribute('aria-expanded', String(isOpen));
-      mobileNavToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+      if (document.body.classList.contains('mobile-nav-open')) closeMobileNav();
+      else openMobileNav();
     });
-    mobileNavBackdrop.addEventListener('click', closeMobileNav);
+    let wasMobile = window.innerWidth <= 760;
     window.addEventListener('resize', () => {
-      if (window.innerWidth > 760) closeMobileNav();
+      const isMobile = window.innerWidth <= 760;
+      if (!isMobile) closeMobileNav();
+      else if (!wasMobile) openMobileNav();
+      wasMobile = isMobile;
     });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeMobileNav();

@@ -1,6 +1,5 @@
 // Channel navigation, direct messages, server management, and server settings.
 window.switchChannel = (c) => {
-  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
   mode = 'channels';
   dmWith = null;
   currentServer = null;
@@ -30,7 +29,6 @@ window.goToServer = () => {
 };
 
 window.toggleDMView = () => {
-  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
   if (mode === 'dms') {
     mode = 'channels';
     dmWith = null;
@@ -1498,7 +1496,6 @@ window.leaveServer = leaveServer;
 
 function switchServer(id) {
   console.log('switchServer called with id=', id);
-  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
   userListSig = '';
   currentServer = id;
   mode = 'channels';
@@ -1585,7 +1582,6 @@ function switchServer(id) {
 }
 
 window.switchServerChannel = (sid, cname) => {
-  if (typeof window.closeMobileNav === 'function') window.closeMobileNav();
   const s = servers.find(x => x.id === sid);
   if (!s) return;
 
