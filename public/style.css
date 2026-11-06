@@ -383,14 +383,6 @@ body.compact .msg .pfp { width: 24px; height: 24px; font-size: 11px; }
 body.compact .msg-author { font-size: 13px; }
 body.compact .msg-bubble { font-size: 13px; }
 
-.ash-swatch{--swatch-a:#303236;--swatch-b:#77797d;--swatch-c:#c3c5c8;}
-.obsidian-swatch{--swatch-a:#100b18;--swatch-b:#512c70;--swatch-c:#d98bff;}
-.fulgurite-swatch{--swatch-a:#1e1f22;--swatch-b:#313338;--swatch-c:#57f287;}
-.magma-swatch{--swatch-a:#241719;--swatch-b:#6f2925;--swatch-c:#ff8247;}
-.plasma-swatch{--swatch-a:#fff5fb;--swatch-b:#ff45c7;--swatch-c:#6427cf;}
-.alpenglow-swatch{--swatch-a:#ffc999;--swatch-b:#9059ff;--swatch-c:#ff4aa2;}
-.phantom-swatch{--swatch-a:#2a1040;--swatch-b:#3f2850;--swatch-c:#e066ff;}
-
 /* ---------- profile layout ---------- */
 .profile-compact .pfp { width: 48px; height: 48px; font-size: 18px; }
 .profile-compact h3 { font-size: 16px; }
@@ -514,4 +506,39 @@ body.compact .msg-bubble { font-size: 13px; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.alpenglow-swatch{
+    --swatch-a:#ffc999;
+    --swatch-b:#ff6bba;
+    --swatch-c:#9059ff;
+}
+.ash-swatch{
+    --swatch-a:#303236;
+    --swatch-b:#77797d;
+    --swatch-c:#c3c5c8;
+}
+.fulgurite-swatch{
+    --swatch-a:#f0f5ed;
+    --swatch-b:#ffffff;
+    --swatch-c:#65f258;
+}
+.magma-swatch{
+    --swatch-a:#241719;
+    --swatch-b:#6f2925;
+    --swatch-c:#ff8247;
+}
+.obsidian-swatch{--swatch-a:#100b18;--swatch-b:#512c70;--swatch-c:#d98bff;}
+.plasma-swatch{--swatch-a:#fff5fb;--swatch-b:#ff45c7;--swatch-c:#6427cf;} /*fix later*/
+@media (prefers-color-scheme:dark){
+    .alpenglow-swatch{
+        --swatch-a:#9059ff;
+        --swatch-b:#ff4aa2;
+        --swatch-c:#ffbd4f;
+    }
+    .fulgurite-swatch{
+        --swatch-a:#1e1f22;
+        --swatch-b:#313338;
+        --swatch-c:#65f258;
+    }
 }
