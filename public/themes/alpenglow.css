@@ -41,18 +41,18 @@
 }
 @media(prefers-color-scheme:dark){
     :root{
-        --bg-p:#20123a;
-        --bg-s:#30204f;
-        --bg-t:#271a43;
-        --chat:#2a1d4a;
-        --chat-hover:#382553;
-        --hover:#463061;
-        --active:#54376f;
-        --panel:#261a41;
-        --input:#382653;
-        --txt:#f0e7ff;
-        --bright:#fff8ff;
-        --mut:#bba8d4;
+        --bg-p:#2a1040;
+        --bg-s:#3a2050;
+        --bg-t:#321848;
+        --chat:#3f2850;
+        --chat-hover:#4c3560;
+        --hover:#5a4270;
+        --active:#6e5280;
+        --panel:#321848;
+        --input:#452858;
+        --txt:#f0d0ff;
+        --bright:#fff0ff;
+        --mut:#d0a0e0;
         --bl:#ff4aa2;
         --pr:#ffbd4f;
         --danger:#ff5877;
@@ -63,19 +63,19 @@
         --shadow-line:rgba(0,0,0,.24);
         --banner-shade:rgba(0,0,0,.65);
         --banner-shadow:rgba(0,0,0,.8);
-        --border:#634a82;
-        --code-bg:#24183e;
-        --mention-bg:rgba(255,74,162,.16);
-        --spoiler-bg:#382553;
-        --spoiler-glow:rgba(255,255,255,.58);
-        --reply-line:#8b70a8;
-        --highlight-bg:rgba(255,189,79,.09);
+        --border:#5a4270;
+        --code-bg:#2a1040;
+        --mention-bg:rgba(217,139,255,.16);
+        --spoiler-bg:#3a2050;
+        --spoiler-glow:rgba(255,255,255,.5);
+        --reply-line:#76538b;
+        --highlight-bg:rgba(243,197,107,.08);
         --overlay-shadow:rgba(0,0,0,.5);
         --overlay-bg:rgba(0,0,0,.7);
         --shadow-strong:rgba(0,0,0,.6);
         --shadow-soft:rgba(0,0,0,.12);
         --shadow-medium:rgba(0,0,0,.4);
-        --context-bg:#20123a;
+        --context-bg:#2a1040;
         --link:#d6a8ff;
         --swatch-a:#9059ff;
         --swatch-b:#ff4aa2;
