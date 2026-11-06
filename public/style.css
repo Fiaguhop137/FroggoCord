@@ -528,8 +528,6 @@ body.compact .msg-bubble { font-size: 13px; }
     --swatch-b:#6f2925;
     --swatch-c:#ff8247;
 }
-.obsidian-swatch{--swatch-a:#100b18;--swatch-b:#512c70;--swatch-c:#d98bff;}
-.plasma-swatch{--swatch-a:#fff5fb;--swatch-b:#ff45c7;--swatch-c:#6427cf;} /*fix later*/
 @media (prefers-color-scheme:dark){
     .alpenglow-swatch{
         --swatch-a:#9059ff;
