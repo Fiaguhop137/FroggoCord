@@ -528,6 +528,11 @@ body.compact .msg-bubble { font-size: 13px; }
     --swatch-b:#6f2925;
     --swatch-c:#ff8247;
 }
+.sulfur-swatch {
+    --swatch-a: #f5f1df;
+    --swatch-b: #fffdf3;
+    --swatch-c: #f5d547;
+}
 @media (prefers-color-scheme:dark){
     .alpenglow-swatch{
         --swatch-a:#9059ff;
@@ -538,5 +543,10 @@ body.compact .msg-bubble { font-size: 13px; }
         --swatch-a:#1e1f22;
         --swatch-b:#58f265;
         --swatch-c:#65f258;
+    }
+    .sulfur-swatch {
+        --swatch-a: #211e14;
+        --swatch-b: #393321;
+        --swatch-c: #f5d547;
     }
 }
