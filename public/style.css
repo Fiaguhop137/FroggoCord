@@ -279,7 +279,7 @@ textarea.inp2 { resize: vertical; }
 .settings-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
 .settings-tab { color: var(--bright); background: transparent; border-bottom: 2px solid var(--bl); padding: 8px 12px; font-weight: 600; cursor: default; }
 .settings-description { color: var(--mut); font-size: 14px; margin: 0 0 14px; }
-.theme-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .theme-option { min-height: 88px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--txt); background: var(--bg-t); cursor: pointer; text-align: left; }
 .theme-option:hover, .theme-option[aria-checked="true"] { border-color: var(--bl); background: var(--hover); }
 .theme-option[aria-checked="true"] { box-shadow: 0 0 0 1px var(--bl); }
@@ -496,7 +496,10 @@ body.compact .msg-bubble { font-size: 13px; }
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   line-height: 1.4;
 }
 .msg-bubble .link-preview .link-url {
@@ -507,7 +510,6 @@ body.compact .msg-bubble { font-size: 13px; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .alpenglow-swatch{
     --swatch-a:#ffc999;
     --swatch-b:#ff6bba;
