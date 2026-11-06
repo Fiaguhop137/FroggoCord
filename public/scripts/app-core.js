@@ -225,6 +225,7 @@ window.getBadgeIconUrl = (badge) => {
     }
     window.closeMobileNav = closeMobileNav;
     window.openMobileNav = openMobileNav;
+    if (window.innerWidth <= 760) openMobileNav();
     mobileNavToggle.addEventListener('click', () => {
       if (document.body.classList.contains('mobile-nav-open')) closeMobileNav();
       else openMobileNav();

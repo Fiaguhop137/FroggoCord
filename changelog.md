@@ -1,4 +1,5 @@
 # Changelog
+ - 20a6d-2026.11.06-13.27.43-0500: Restored automatic opening of the secondary channel sidebar on mobile; it remains closable with the navigation toggle, backdrop, or Escape.
  - 20a6d-2026.11.06-13.26.37-0500: Changed theme options from an automatic four-column layout to three columns on larger screens, retaining two columns on mobile.
  - 1f89a-2026.10.23-16.16.37-0400: Added changelog
  - 20a6d-2026.10.23-22.30.59-0400: Added a settings overlay with five persisted, hot-swappable themes (Ash, Obsidian, Magma, Fulgurite, Plasma); moved the full color palette into theme stylesheets and converted shared stylesheet color literals to theme variables. Verified JavaScript syntax and theme variable coverage; no known issues, though visual browser testing remains to be done.
@@ -179,6 +180,7 @@
  - 20a6d-2026.11.04-20.49.00-0500: Replaced the broken black settings SVG with a visible 24px icon and normalized user-panel icon sizing.
  - 20a6d-2026.11.05-07.56.00-0500: Fixed voice channels by storing the participant channel ID, avoiding an unnecessary signaling composite index, and selecting one stable WebRTC offer initiator per peer.
  - 20a6d-2026.11.05-07.57.00-0500: Hardened voice peer setup by queueing early ICE candidates and cleaning up per-peer signaling listeners when users leave.
+ - 1f89a-2026.11.05-11.24.62-0500: Split off from Ben's version. He had no concept of basic git etiquette and constantly deleted my work/introduced bugs. 
  - 20a6d-2026.11.05-16.51.00-0500: Fixed oversized voice icons by constraining channel and VC panel icon dimensions, restored the voice channel name display, and adopted Ben’s relevant change to keep channel labels as `#name`.
  - 20a6d-2026.11.05-16.56.00-0500: Kept mobile navigation available by default, stopped server/channel clicks from auto-closing it, and reopened it automatically after returning from desktop-sized layouts.
  - 20a6d-2026.11.05-17.04.00-0500: Separated mobile navigation behavior so the server icon rail stays permanently visible while the channel sidebar opens only from the three-line menu and closes normally.
