@@ -520,8 +520,8 @@ body.compact .msg-bubble { font-size: 13px; }
 }
 .fulgurite-swatch{
     --swatch-a:#f0f5ed;
-    --swatch-b:#ffffff;
-    --swatch-c:#65f258;
+    --swatch-b:#65f258;
+    --swatch-c:#58f265;
 }
 .magma-swatch{
     --swatch-a:#241719;
@@ -538,7 +538,7 @@ body.compact .msg-bubble { font-size: 13px; }
     }
     .fulgurite-swatch{
         --swatch-a:#1e1f22;
-        --swatch-b:#313338;
+        --swatch-b:#58f265;
         --swatch-c:#65f258;
     }
 }
