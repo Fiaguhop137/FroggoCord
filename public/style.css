@@ -524,16 +524,16 @@ body.compact .msg-bubble { font-size: 13px; }
     --swatch-c:#58f265;
 }
 .magma-swatch{
-    --swatch-a:#241719;
-    --swatch-b:#6f2925;
+    --swatch-a:#fffaf7;
+    --swatch-b:#e36546;
     --swatch-c:#ff8247;
 }
 .sulfur-swatch {
-    --swatch-a: #f5f1df;
-    --swatch-b: #fffdf3;
-    --swatch-c: #f5d547;
+    --swatch-a:#fffdf3;
+    --swatch-b:#d9bb40;
+    --swatch-c:#f5d547;
 }
-@media (prefers-color-scheme:dark){
+@media(prefers-color-scheme:dark){
     .alpenglow-swatch{
         --swatch-a:#9059ff;
         --swatch-b:#ff4aa2;
@@ -544,9 +544,14 @@ body.compact .msg-bubble { font-size: 13px; }
         --swatch-b:#58f265;
         --swatch-c:#65f258;
     }
+    .magma-swatch{
+        --swatch-a:#3d2526;
+        --swatch-b:#e36546;
+        --swatch-c:#ff8247;
+    }
     .sulfur-swatch {
-        --swatch-a: #211e14;
-        --swatch-b: #393321;
-        --swatch-c: #f5d547;
+        --swatch-a:#393321;
+        --swatch-b:#d9bb40;
+        --swatch-c:#f5d547;
     }
 }
