@@ -1,9 +1,84 @@
-/*This remains the only ai generated theme for FroggoCord cuz lowkey idk what to do with this*/
-:root {
-  --bg-p:#25272b; --bg-s:#34363a; --bg-t:#292b2f; --chat:#3b3d41; --chat-hover:#44464a; --hover:#4c4e52; --active:#57595d;
-  --panel:#303236; --input:#4a4c50; --txt:#d0d1d3; --bright:#f3f3f4; --mut:#9a9ca0; --bl:#c3c5c8; --pr:#85878b; --danger:#b6b7b9; --yellow:#d7d8da;
-  --scroll-thumb:#1c1d20; --accent-contrast:#202124; --white:#fff; --shadow-line:rgba(0,0,0,.24); --banner-shade:rgba(0,0,0,.65); --banner-shadow:rgba(0,0,0,.8);
-  --border:#606266; --code-bg:#292b2f; --mention-bg:rgba(195,197,200,.15); --spoiler-bg:#4c4e52; --spoiler-glow:rgba(255,255,255,.58); --reply-line:#77797d; --highlight-bg:rgba(215,216,218,.08);
-  --overlay-shadow:rgba(0,0,0,.5); --overlay-bg:rgba(0,0,0,.7); --shadow-strong:rgba(0,0,0,.6); --shadow-soft:rgba(0,0,0,.12); --shadow-medium:rgba(0,0,0,.4); --context-bg:#1c1d20; --link:#d7d8da;
-  --swatch-a:#303236; --swatch-b:#77797d; --swatch-c:#c3c5c8;
+:root{
+    --bg-p:#eeedeb;
+    --bg-s:#e1dfdc;
+    --bg-t:#eeedeb;
+    --chat:#faf9f7;
+    --chat-hover:#f0efed;
+    --hover:#e6e4e1;
+    --active:#d9d7d3;
+    --panel:#e8e6e3;
+    --input:#faf9f7;
+    --txt:#373737;
+    --bright:#202020;
+    --mut:#858585;
+    --bl:#85878b;
+    --pr:#66686c;
+    --danger:#b94343;
+    --yellow:#a68b50;
+    --scroll-thumb:#b8b6b2;
+    --accent-contrast:#202124;
+    --white:#fff;
+    --shadow-line:rgba(0,0,0,.12);
+    --banner-shade:rgba(0,0,0,.4);
+    --banner-shadow:rgba(0,0,0,.55);
+    --border:#d0ceca;
+    --code-bg:#e1dfdc;
+    --mention-bg:rgba(133,135,139,.15);
+    --spoiler-bg:#dedcd8;
+    --spoiler-glow:rgba(0,0,0,.25);
+    --reply-line:#aaa8a4;
+    --highlight-bg:rgba(150,150,150,.1);
+    --overlay-shadow:rgba(0,0,0,.3);
+    --overlay-bg:rgba(0,0,0,.55);
+    --shadow-strong:rgba(0,0,0,.2);
+    --shadow-soft:rgba(0,0,0,.05);
+    --shadow-medium:rgba(0,0,0,.12);
+    --context-bg:#faf9f7;
+    --link:#66686c;
+    --swatch-a:#eeedeb;
+    --swatch-b:#faf9f7;
+    --swatch-c:#85878b;
+}
+@media(prefers-color-scheme:dark){
+    :root{
+        --bg-p:#25272b;
+        --bg-s:#34363a;
+        --bg-t:#292b2f;
+        --chat:#3b3d41;
+        --chat-hover:#44464a;
+        --hover:#4c4e52;
+        --active:#57595d;
+        --panel:#303236;
+        --input:#4a4c50;
+        --txt:#d0d1d3;
+        --bright:#f3f3f4;
+        --mut:#9a9ca0;
+        --bl:#c3c5c8;
+        --pr:#85878b;
+        --danger:#b6b7b9;
+        --yellow:#d7d8da;
+        --scroll-thumb:#1c1d20;
+        --accent-contrast:#202124;
+        --white:#fff;
+        --shadow-line:rgba(0,0,0,.24);
+        --banner-shade:rgba(0,0,0,.65);
+        --banner-shadow:rgba(0,0,0,.8);
+        --border:#606266;
+        --code-bg:#292b2f;
+        --mention-bg:rgba(195,197,200,.15);
+        --spoiler-bg:#4c4e52;
+        --spoiler-glow:rgba(255,255,255,.58);
+        --reply-line:#77797d;
+        --highlight-bg:rgba(215,216,218,.08);
+        --overlay-shadow:rgba(0,0,0,.5);
+        --overlay-bg:rgba(0,0,0,.7);
+        --shadow-strong:rgba(0,0,0,.6);
+        --shadow-soft:rgba(0,0,0,.12);
+        --shadow-medium:rgba(0,0,0,.4);
+        --context-bg:#1c1d20;
+        --link:#d7d8da;
+        --swatch-a:#303236;
+        --swatch-b:#77797d;
+        --swatch-c:#c3c5c8;
+    }
 }

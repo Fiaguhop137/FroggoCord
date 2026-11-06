@@ -516,9 +516,9 @@ body.compact .msg-bubble { font-size: 13px; }
     --swatch-c:#9059ff;
 }
 .ash-swatch{
-    --swatch-a:#303236;
-    --swatch-b:#77797d;
-    --swatch-c:#c3c5c8;
+    --swatch-a:#faf9f7;
+    --swatch-b:#c3c5c8;
+    --swatch-c:#85878b;
 }
 .fulgurite-swatch{
     --swatch-a:#f0f5ed;
@@ -540,6 +540,11 @@ body.compact .msg-bubble { font-size: 13px; }
         --swatch-a:#9059ff;
         --swatch-b:#ff4aa2;
         --swatch-c:#ffbd4f;
+    }
+    .ash-swatch{
+        --swatch-a:#303236;
+        --swatch-b:#77797d;
+        --swatch-c:#c3c5c8;
     }
     .fulgurite-swatch{
         --swatch-a:#1e1f22;
