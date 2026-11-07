@@ -1,6 +1,6 @@
 # 🐸 Froggocord
 <small><small><small>i spent so long looking for this emoji you better appreciate it</small></small></small>\
-Froggocord is a full-featured Discord web clone built completely from scratch without all the bloat of discord. It loads up to 200% faster in my testing. Froggocord also does not have a minimum age restriction. 
+Froggocord is a full-featured Discord web clone built completely from scratch without all the bloat of discord. It loads up to 200% faster in my testing. Froggocord also does not ban people
 
 Please know that this is made partially with AI, because this was forked from Ben's repo. I am going through and correcting that but it takes time 
 
