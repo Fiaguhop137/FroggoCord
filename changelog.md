@@ -1,4 +1,5 @@
 # Changelog
+ - 20a6d-2026.11.06-18.58.23-0500: Added a daily scheduled cleanup that removes server-scoped orphaned Firestore data older than 30 days, including messages, attachments, pins, threads, events, audit logs, invites, webhooks, and message history.
  - 20a6d-2026.11.06-13.27.43-0500: Restored automatic opening of the secondary channel sidebar on mobile; it remains closable with the navigation toggle, backdrop, or Escape.
  - 20a6d-2026.11.06-13.26.37-0500: Changed theme options from an automatic four-column layout to three columns on larger screens, retaining two columns on mobile.
  - 1f89a-2026.10.23-16.16.37-0400: Added changelog
