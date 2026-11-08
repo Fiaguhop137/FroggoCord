@@ -1,7 +1,4 @@
 # Changelog
- - 20a6d-2026.11.06-18.58.23-0500: Added a daily scheduled cleanup that removes server-scoped orphaned Firestore data older than 30 days, including messages, attachments, pins, threads, events, audit logs, invites, webhooks, and message history.
- - 20a6d-2026.11.06-13.27.43-0500: Restored automatic opening of the secondary channel sidebar on mobile; it remains closable with the navigation toggle, backdrop, or Escape.
- - 20a6d-2026.11.06-13.26.37-0500: Changed theme options from an automatic four-column layout to three columns on larger screens, retaining two columns on mobile.
  - 1f89a-2026.10.23-16.16.37-0400: Added changelog
  - 20a6d-2026.10.23-22.30.59-0400: Added a settings overlay with five persisted, hot-swappable themes (Ash, Obsidian, Magma, Fulgurite, Plasma); moved the full color palette into theme stylesheets and converted shared stylesheet color literals to theme variables. Verified JavaScript syntax and theme variable coverage; no known issues, though visual browser testing remains to be done.
  - 20a6d-2026.10.23-22.38.10-0400: Fixed invalid theme stylesheet headers that prevented browsers from parsing the :root palettes. Verified the app renders locally with the Obsidian palette and all five theme files are served as CSS; deployed the complete Firebase Hosting public directory.
@@ -190,4 +187,7 @@
  - 20a6d-2026.11.05-17.24.00-0500: Preserved uploaded SVG files as SVG data URLs instead of converting them to AVIF, and rendered them directly as images without sandboxed iframe handling.
  - 20a6d-2026.11.05-17.37.00-0500: Fixed voice-channel teardown attempting to delete other users’ signaling records, awaited permitted signal cleanup, and removed noisy channel-render debug logging.
  - 20a6d-2026.11.05-17.45.00-0500: Added isolated SVG execution using opaque-origin sandboxed frames for chat previews and the image lightbox; SVG scripts cannot access the app origin or Firebase session.
- 
+ - 20a6d-2026.11.06-13.26.37-0500: Changed theme options from an automatic four-column layout to three columns on larger screens, retaining two columns on mobile.
+ - 20a6d-2026.11.06-13.27.43-0500: Restored automatic opening of the secondary channel sidebar on mobile; it remains closable with the navigation toggle, backdrop, or Escape.
+ - 20a6d-2026.11.06-18.58.23-0500: Added a daily scheduled cleanup that removes server-scoped orphaned Firestore data older than 30 days, including messages, attachments, pins, threads, events, audit logs, invites, webhooks, and message history.
+ - 20a6d-2026.11.08-15.54.26-0500: Made voice channels the only channel type, migrated existing channels to voice on load, and retained text messaging inside every voice channel.

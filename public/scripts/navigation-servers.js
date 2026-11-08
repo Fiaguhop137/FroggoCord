@@ -108,12 +108,10 @@ function renderSidebar() {
     h3.textContent = srv ? srv.name : 'Channels';
 
     if (srv) {
-      const visibleChs = (srv.channels || [{ name: 'general' }]).filter(c => !c.private || srv.owner === user || (typeof getServerRole === 'function' && getServerRole(srv).isAdmin));
-      const voiceChs = visibleChs.filter(c => c.type === 'voice');
-      const textChs = visibleChs.filter(c => c.type !== 'voice');
+      const visibleChs = (srv.channels || [{ name: 'general', id: 'general', type: 'voice' }]).filter(c => !c.private || srv.owner === user || (typeof getServerRole === 'function' && getServerRole(srv).isAdmin));
       const cats = {};
       const uncat = [];
-      textChs.forEach(c => {
+      visibleChs.forEach(c => {
         if (c.category) {
           if (!cats[c.category]) cats[c.category] = [];
           cats[c.category].push(c);
@@ -122,13 +120,12 @@ function renderSidebar() {
         }
       });
       let chBtns = '';
-      if (voiceChs.length) chBtns += `<div class="cat">Voice Channels</div>` + voiceChs.map(c => renderChannelItem(srv, c)).join('');
-      if (uncat.length) chBtns += `<div class="cat">Text Channels</div>` + uncat.map(c => renderChannelItem(srv, c)).join('');
+      if (uncat.length) chBtns += `<div class="cat">Voice Channels</div>` + uncat.map(c => renderChannelItem(srv, c)).join('');
       Object.keys(cats).sort().forEach(cat => {
         chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(srv, c)).join('');
       });
       ch.innerHTML = chBtns +
-        `<button class="cb muted" onclick="openChannelModal('${srv.id}')" style="color:var(--bl);">+ Add Channel</button>` +
+        `<button class="cb muted" onclick="openChannelModal('${srv.id}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
         `<button class="cb muted" onclick="shareInvite('${srv.id}')">Invite Code: ${escHtml(srv.inviteCode)}</button>` +
         `<button class="cb muted" onclick="revokeInvite('${srv.id}')" style="color:var(--danger);">Revoke Invite</button>` +
         `<button class="cb muted" onclick="copyInviteLink('${srv.id}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -333,7 +330,7 @@ async function createServerFromModal() {
     banned: [],
     welcomeMessage: '',
     public: false,
-    channels: [{ name: 'general', id: 'general' }],
+    channels: [{ name: 'general', id: 'general', type: 'voice' }],
     createdAt: serverTimestamp()
   });
 
@@ -389,7 +386,7 @@ async function createServer() {
     banned: [],
     welcomeMessage: '',
     public: false,
-    channels: [{ name: 'general', id: 'general' }],
+    channels: [{ name: 'general', id: 'general', type: 'voice' }],
     createdAt: serverTimestamp()
   });
 
@@ -472,6 +469,13 @@ async function joinServer(codeParam) {
 async function loadServers() {
   const snap = await getDocs(query(collection(db, 'servers'), where('members', 'array-contains', user)));
   servers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const migrations = servers.filter(s => !Array.isArray(s.channels) || s.channels.length === 0 || s.channels.some(c => c.type !== 'voice'));
+  await Promise.all(migrations.map(async s => {
+    s.channels = Array.isArray(s.channels) && s.channels.length
+      ? s.channels.map(c => ({ ...c, type: 'voice' }))
+      : [{ name: 'general', id: 'general', type: 'voice' }];
+    await updateDoc(doc(db, 'servers', s.id), { channels: s.channels });
+  }));
   window.servers = servers;
   window.serverEmojis = window.serverEmojis || {};
   window.serverStickers = window.serverStickers || {};
@@ -602,7 +606,7 @@ function renderChannelItem(server, channel) {
     ? `<span class="channel-controls" onclick="event.stopPropagation()"><button type="button" onclick="channelAction('${server.id}','${encodedName}','rename')" title="Rename channel"><img src="/icons/edit.svg" alt="Rename channel"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','access')" title="Manage channel access"><img src="/icons/lock.svg" alt="Manage channel access"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','up')" title="Move up"><img src="/icons/arrow-up.svg" alt="Move up"></button><button type="button" onclick="channelAction('${server.id}','${encodedName}','down')" title="Move down"><img src="/icons/arrow-down.svg" alt="Move down"></button>${channel.name !== 'general' ? `<button type="button" onclick="channelAction('${server.id}','${encodedName}','delete')" title="Delete channel"><img src="/icons/trash.svg" alt="Delete channel"></button>` : ''}</span>`
     : '';
   const voiceIcon = '';
-  const voiceJoin = channel.type === 'voice' ? `<button style="margin-left:4px;background:transparent;border:none;color:var(--bl);cursor:pointer;font-size:11px;" onclick="joinVoiceChannel('${server.id}','${escHtml(channel.name)}')" title="Join voice"><img class="channel-icon" src="/icons/voice.svg" alt="" aria-hidden="true"> Join</button>` : '';
+  const voiceJoin = `<button style="margin-left:4px;background:transparent;border:none;color:var(--bl);cursor:pointer;font-size:11px;" onclick="joinVoiceChannel('${server.id}','${escHtml(channel.name)}')" title="Join voice"><img class="channel-icon" src="/icons/voice.svg" alt="" aria-hidden="true"> Join</button>`;
   const privateIcon = channel.private ? '<img class="channel-icon" src="/icons/lock.svg" alt="" aria-hidden="true"> ' : '';
   const announcementIcon = channel.announcement ? '<img class="channel-icon" src="/icons/note.svg" alt="" aria-hidden="true"> ' : '';
   const result = `<div class="channel-row" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;"><button class="cb ${active ? 'active' : ''}" onclick="switchServerChannel('${server.id}','${escHtml(channel.name)}')" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;">${privateIcon}${announcementIcon}${voiceIcon}# ${escHtml(channel.name)}</button>${voiceJoin}${unreadBadge('srv_' + server.id + '_' + channel.name)}${controls}</div>`;
@@ -1093,7 +1097,7 @@ window.saveServerTemplate = async () => {
     icon: s.icon || '',
     banner: s.banner || '',
     accent: s.accent || '#57f287',
-    channels: (s.channels || []).map(c => ({ name: c.name, private: !!c.private, nsfw: !!c.nsfw, category: c.category || '', topic: c.topic || '', slowMode: c.slowMode || 0 })),
+    channels: (s.channels || []).map(c => ({ name: c.name, type: 'voice', private: !!c.private, nsfw: !!c.nsfw, category: c.category || '', topic: c.topic || '', slowMode: c.slowMode || 0 })),
     emojis: s.emojis || [],
     stickers: s.stickers || [],
     rules: s.rules || [],
@@ -1550,20 +1554,15 @@ function switchServer(id) {
     }
     if (s.accent) { banner.style.borderLeft = `4px solid ${escHtml(s.accent)}`; bannerName.style.color = s.accent; }
 
-    const visibleChs = (s.channels || [{ name: 'general' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
-    // Separate voice and text channels
-    const voiceChs = visibleChs.filter(c => c.type === 'voice');
-    const textChs = visibleChs.filter(c => c.type !== 'voice');
-    // Group text by category
-    const cats = {};
-    const uncat = [];
-    textChs.forEach(c => { if (c.category) { if (!cats[c.category]) cats[c.category] = []; cats[c.category].push(c); } else { uncat.push(c); } });
-    let chBtns = '';
-    if (voiceChs.length) chBtns += `<div class="cat">Voice Channels</div>` + voiceChs.map(c => renderChannelItem(s, c)).join('');
-    if (uncat.length) { console.log('switchServer: rendering', uncat.length, 'channels, uncat=', JSON.stringify(uncat.map(c=>c.name))); chBtns += `<div class="cat">Text Channels</div>` + uncat.map(c => renderChannelItem(s, c)).join(''); console.log('switchServer: chBtns after render=', chBtns.substring(0, 200)); }
+    const visibleChs = (s.channels || [{ name: 'general', id: 'general', type: 'voice' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
+      const cats = {};
+      const uncat = [];
+      visibleChs.forEach(c => { if (c.category) { if (!cats[c.category]) cats[c.category] = []; cats[c.category].push(c); } else { uncat.push(c); } });
+      let chBtns = '';
+      if (uncat.length) chBtns += `<div class="cat">Voice Channels</div>` + uncat.map(c => renderChannelItem(s, c)).join('');
     Object.keys(cats).sort().forEach(cat => { chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(s, c)).join(''); });
     document.querySelector('.ch').innerHTML = chBtns +
-      `<button class="cb muted" onclick="openChannelModal('${s.id}')" style="color:var(--bl);">+ Add Channel</button>` +
+      `<button class="cb muted" onclick="openChannelModal('${s.id}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
       `<button class="cb muted" onclick="shareInvite('${s.id}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
       `<button class="cb muted" onclick="revokeInvite('${s.id}')" style="color:var(--danger);">Revoke Invite</button>` +
 `<button class="cb muted" onclick="copyInviteLink('${s.id}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -1606,18 +1605,15 @@ window.switchServerChannel = (sid, cname) => {
 
   chan = 'srv_' + sid + '_' + cname;
   if (typeof window.addRecentChannel === 'function') window.addRecentChannel(chan);
-      const visibleChs2 = (s.channels || [{ name: 'general' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
-      const voiceChs2 = visibleChs2.filter(c => c.type === 'voice');
-      const textChs2 = visibleChs2.filter(c => c.type !== 'voice');
+      const visibleChs2 = (s.channels || [{ name: 'general', id: 'general', type: 'voice' }]).filter(c => !c.private || s.owner === user || (typeof getServerRole === 'function' && getServerRole(s).isAdmin));
       const cats2 = {};
       const uncat2 = [];
-      textChs2.forEach(c => { if (c.category) { if (!cats2[c.category]) cats2[c.category] = []; cats2[c.category].push(c); } else { uncat2.push(c); } });
+      visibleChs2.forEach(c => { if (c.category) { if (!cats2[c.category]) cats2[c.category] = []; cats2[c.category].push(c); } else { uncat2.push(c); } });
       let chBtns2 = '';
-      if (voiceChs2.length) chBtns2 += `<div class="cat">Voice Channels</div>` + voiceChs2.map(c => renderChannelItem(s, c)).join('');
-      if (uncat2.length) chBtns2 += `<div class="cat">Text Channels</div>` + uncat2.map(c => renderChannelItem(s, c)).join('');
+      if (uncat2.length) chBtns2 += `<div class="cat">Voice Channels</div>` + uncat2.map(c => renderChannelItem(s, c)).join('');
       Object.keys(cats2).sort().forEach(cat => { chBtns2 += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats2[cat].map(c => renderChannelItem(s, c)).join(''); });
       document.querySelector('.ch').innerHTML = chBtns2 +
-    `<button class="cb muted" onclick="openChannelModal('${sid}')" style="color:var(--bl);">+ Add Channel</button>` +
+    `<button class="cb muted" onclick="openChannelModal('${sid}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
     `<button class="cb muted" onclick="shareInvite('${sid}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
     `<button class="cb muted" onclick="revokeInvite('${sid}')" style="color:var(--danger);">Revoke Invite</button>` +
 `<button class="cb muted" onclick="copyInviteLink('${sid}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -1651,7 +1647,7 @@ async function createChannel(sid) {
     return;
   }
 
-  const channels = s.channels || [{ name: 'general', id: 'general' }];
+  const channels = s.channels || [{ name: 'general', id: 'general', type: 'voice' }];
   if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
 
   const isPrivate = await appConfirm('Make this channel private?');
@@ -1659,9 +1655,7 @@ async function createChannel(sid) {
   const category = await appPrompt('Category (leave blank for none):');
   const slowMode = await appPrompt('Slow mode seconds (0 for none):');
   const announcement = await appConfirm('Announcement channel (@everyone notifications)?');
-  const channelType = await appPrompt('Channel type (text or voice/vc):', 'text');
-  const isVoice = (channelType || '').toLowerCase().trim() === 'voice' || (channelType || '').toLowerCase().trim() === 'vc';
-  channels.push({ name, id: name, type: isVoice ? 'voice' : 'text', private: !!isPrivate, nsfw: !!isNsfw, category: category || '', topic: '', description: '', slowMode: parseInt(slowMode || '0', 10) || 0, announcement: !!announcement });
+  channels.push({ name, id: name, type: 'voice', private: !!isPrivate, nsfw: !!isNsfw, category: category || '', topic: '', description: '', slowMode: parseInt(slowMode || '0', 10) || 0, announcement: !!announcement });
   await updateDoc(doc(db, 'servers', sid), { channels });
   await loadServers();
   switchServerChannel(sid, name);
@@ -1923,7 +1917,6 @@ function openChannelModal(sid) {
   
   // Reset form
   document.getElementById('cc-name').value = '';
-  document.getElementById('cc-type').value = 'text';
   document.getElementById('cc-category').value = '';
   document.getElementById('cc-private').checked = false;
   document.getElementById('cc-nsfw').checked = false;
@@ -1935,13 +1928,10 @@ function openChannelModal(sid) {
   setTimeout(() => { document.getElementById('cc-name').focus(); }, 200);
 }
 
-function openChannelModalFromCtx(type) {
+function openChannelModalFromCtx() {
   const sid = document.getElementById('channel-ctx')?.dataset?.serverId || ctxChannelServerId;
   hideChannelCtx();
   openChannelModal(sid);
-  if (type === 'voice') {
-    setTimeout(() => { document.getElementById('cc-type').value = 'voice'; }, 100);
-  }
 }
 
 function closeChannelModal() {
@@ -1963,18 +1953,16 @@ async function createChannelFromModal() {
   const name = (document.getElementById('cc-name').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   if (!name) { appAlert('Please enter a channel name.'); return; }
   
-  const channels = s.channels || [{ name: 'general', id: 'general' }];
+  const channels = s.channels || [{ name: 'general', id: 'general', type: 'voice' }];
   if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
   
-  const type = document.getElementById('cc-type').value;
-  const isVoice = type === 'voice';
   const isPrivate = document.getElementById('cc-private').checked;
   const isNsfw = document.getElementById('cc-nsfw').checked;
   const category = document.getElementById('cc-category').value.trim();
   const slowMode = parseInt(document.getElementById('cc-slowmode').value || '0', 10) || 0;
   const announcement = document.getElementById('cc-announcement').checked;
   
-  channels.push({ name, id: name, type: isVoice ? 'voice' : 'text', private: isPrivate, nsfw: isNsfw, category: category, topic: '', description: '', slowMode: slowMode, announcement: announcement });
+  channels.push({ name, id: name, type: 'voice', private: isPrivate, nsfw: isNsfw, category: category, topic: '', description: '', slowMode: slowMode, announcement: announcement });
   
   try {
     await updateDoc(doc(db, 'servers', sid), { channels });
