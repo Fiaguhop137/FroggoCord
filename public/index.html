@@ -42,21 +42,18 @@
     </div>
 
     <div id="channel-ctx">
-    <div id="ctx-add-channel" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'" onclick="openChannelModalFromCtx()">Add Voice Channel</div>
+    <div id="ctx-add-channel" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'" onclick="openChannelModalFromCtx()">Add Channel</div>
     </div>
 
     <div id="channel-create-modal" class="modal">
     <div class="modal-card">
-        <h3>Add Voice Channel</h3>
+        <h3>Add Channel</h3>
         <label class="field-label">Channel Name</label>
         <input id="cc-name" class="inp2" placeholder="channel-name">
         <label class="field-label">Category (optional)</label>
         <input id="cc-category" class="inp2" placeholder="Category name">
         <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
             <input type="checkbox" id="cc-private" style="margin:0;"> Private (restricted access)
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
-            <input type="checkbox" id="cc-nsfw" style="margin:0;"> NSFW (age-restricted)
         </label>
         <label style="display:flex;align-items:center;gap:8px;margin:10px 0;">
             <input type="checkbox" id="cc-announcement" style="margin:0;"> Announcement channel

@@ -210,7 +210,7 @@
       }
     };
 
-    // Channel creation handled by navigation-servers.js (supports voice/VC, private, NSFW, etc.)
+    // Channel creation handled by navigation-servers.js.
 
 
     window.deleteChannel = async function (sid, cname) {

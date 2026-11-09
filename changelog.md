@@ -191,3 +191,4 @@
  - 20a6d-2026.11.06-13.27.43-0500: Restored automatic opening of the secondary channel sidebar on mobile; it remains closable with the navigation toggle, backdrop, or Escape.
  - 20a6d-2026.11.06-18.58.23-0500: Added a daily scheduled cleanup that removes server-scoped orphaned Firestore data older than 30 days, including messages, attachments, pins, threads, events, audit logs, invites, webhooks, and message history.
  - 20a6d-2026.11.08-15.54.26-0500: Made voice channels the only channel type, migrated existing channels to voice on load, and retained text messaging inside every voice channel.
+ - 20a6d-2026.11.09-16.09.26-0500: Replaced separate thread actions and storage with same-channel reply chains, added reply message IDs, renamed voice-channel UI labels to Channels, and removed the age-restricted channel option.

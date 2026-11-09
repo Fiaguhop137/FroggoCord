@@ -120,12 +120,12 @@ function renderSidebar() {
         }
       });
       let chBtns = '';
-      if (uncat.length) chBtns += `<div class="cat">Voice Channels</div>` + uncat.map(c => renderChannelItem(srv, c)).join('');
+      if (uncat.length) chBtns += `<div class="cat">Channels</div>` + uncat.map(c => renderChannelItem(srv, c)).join('');
       Object.keys(cats).sort().forEach(cat => {
         chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(srv, c)).join('');
       });
       ch.innerHTML = chBtns +
-        `<button class="cb muted" onclick="openChannelModal('${srv.id}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
+        `<button class="cb muted" onclick="openChannelModal('${srv.id}')" style="color:var(--bl);">+ Add Channel</button>` +
         `<button class="cb muted" onclick="shareInvite('${srv.id}')">Invite Code: ${escHtml(srv.inviteCode)}</button>` +
         `<button class="cb muted" onclick="revokeInvite('${srv.id}')" style="color:var(--danger);">Revoke Invite</button>` +
         `<button class="cb muted" onclick="copyInviteLink('${srv.id}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -1097,7 +1097,7 @@ window.saveServerTemplate = async () => {
     icon: s.icon || '',
     banner: s.banner || '',
     accent: s.accent || '#57f287',
-    channels: (s.channels || []).map(c => ({ name: c.name, type: 'voice', private: !!c.private, nsfw: !!c.nsfw, category: c.category || '', topic: c.topic || '', slowMode: c.slowMode || 0 })),
+    channels: (s.channels || []).map(c => ({ name: c.name, type: 'voice', private: !!c.private, category: c.category || '', topic: c.topic || '', slowMode: c.slowMode || 0 })),
     emojis: s.emojis || [],
     stickers: s.stickers || [],
     rules: s.rules || [],
@@ -1200,7 +1200,7 @@ window.markAllRead = () => {
   } catch (e) { console.error('markAllRead failed', e); }
 };
 
-// ---------- Voice Channel Join ----------
+// ---------- Channel Audio Join ----------
 window.joinVoiceChannel = (sid, cname) => {
   const s = getServerById(sid);
   if (!s) return;
@@ -1559,10 +1559,10 @@ function switchServer(id) {
       const uncat = [];
       visibleChs.forEach(c => { if (c.category) { if (!cats[c.category]) cats[c.category] = []; cats[c.category].push(c); } else { uncat.push(c); } });
       let chBtns = '';
-      if (uncat.length) chBtns += `<div class="cat">Voice Channels</div>` + uncat.map(c => renderChannelItem(s, c)).join('');
+      if (uncat.length) chBtns += `<div class="cat">Channels</div>` + uncat.map(c => renderChannelItem(s, c)).join('');
     Object.keys(cats).sort().forEach(cat => { chBtns += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats[cat].map(c => renderChannelItem(s, c)).join(''); });
     document.querySelector('.ch').innerHTML = chBtns +
-      `<button class="cb muted" onclick="openChannelModal('${s.id}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
+      `<button class="cb muted" onclick="openChannelModal('${s.id}')" style="color:var(--bl);">+ Add Channel</button>` +
       `<button class="cb muted" onclick="shareInvite('${s.id}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
       `<button class="cb muted" onclick="revokeInvite('${s.id}')" style="color:var(--danger);">Revoke Invite</button>` +
 `<button class="cb muted" onclick="copyInviteLink('${s.id}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -1610,10 +1610,10 @@ window.switchServerChannel = (sid, cname) => {
       const uncat2 = [];
       visibleChs2.forEach(c => { if (c.category) { if (!cats2[c.category]) cats2[c.category] = []; cats2[c.category].push(c); } else { uncat2.push(c); } });
       let chBtns2 = '';
-      if (uncat2.length) chBtns2 += `<div class="cat">Voice Channels</div>` + uncat2.map(c => renderChannelItem(s, c)).join('');
+      if (uncat2.length) chBtns2 += `<div class="cat">Channels</div>` + uncat2.map(c => renderChannelItem(s, c)).join('');
       Object.keys(cats2).sort().forEach(cat => { chBtns2 += `<div class="cat" style="margin-top:8px;font-size:11px;color:var(--mut);text-transform:uppercase;">${escHtml(cat)}</div>` + cats2[cat].map(c => renderChannelItem(s, c)).join(''); });
       document.querySelector('.ch').innerHTML = chBtns2 +
-    `<button class="cb muted" onclick="openChannelModal('${sid}')" style="color:var(--bl);">+ Add Voice Channel</button>` +
+    `<button class="cb muted" onclick="openChannelModal('${sid}')" style="color:var(--bl);">+ Add Channel</button>` +
     `<button class="cb muted" onclick="shareInvite('${sid}')">Invite Code: ${escHtml(s.inviteCode)}</button>` +
     `<button class="cb muted" onclick="revokeInvite('${sid}')" style="color:var(--danger);">Revoke Invite</button>` +
 `<button class="cb muted" onclick="copyInviteLink('${sid}')" style="color:var(--bl);">Copy Invite</button>`;
@@ -1651,11 +1651,10 @@ async function createChannel(sid) {
   if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
 
   const isPrivate = await appConfirm('Make this channel private?');
-  const isNsfw = await appConfirm('Mark as NSFW (age-restricted)?');
   const category = await appPrompt('Category (leave blank for none):');
   const slowMode = await appPrompt('Slow mode seconds (0 for none):');
   const announcement = await appConfirm('Announcement channel (@everyone notifications)?');
-  channels.push({ name, id: name, type: 'voice', private: !!isPrivate, nsfw: !!isNsfw, category: category || '', topic: '', description: '', slowMode: parseInt(slowMode || '0', 10) || 0, announcement: !!announcement });
+  channels.push({ name, id: name, type: 'voice', private: !!isPrivate, category: category || '', topic: '', description: '', slowMode: parseInt(slowMode || '0', 10) || 0, announcement: !!announcement });
   await updateDoc(doc(db, 'servers', sid), { channels });
   await loadServers();
   switchServerChannel(sid, name);
@@ -1919,7 +1918,6 @@ function openChannelModal(sid) {
   document.getElementById('cc-name').value = '';
   document.getElementById('cc-category').value = '';
   document.getElementById('cc-private').checked = false;
-  document.getElementById('cc-nsfw').checked = false;
   document.getElementById('cc-announcement').checked = false;
   document.getElementById('cc-slowmode').value = '0';
   
@@ -1957,12 +1955,11 @@ async function createChannelFromModal() {
   if (channels.some(c => c.name === name)) { appAlert('Channel already exists'); return; }
   
   const isPrivate = document.getElementById('cc-private').checked;
-  const isNsfw = document.getElementById('cc-nsfw').checked;
   const category = document.getElementById('cc-category').value.trim();
   const slowMode = parseInt(document.getElementById('cc-slowmode').value || '0', 10) || 0;
   const announcement = document.getElementById('cc-announcement').checked;
   
-  channels.push({ name, id: name, type: 'voice', private: isPrivate, nsfw: isNsfw, category: category, topic: '', description: '', slowMode: slowMode, announcement: announcement });
+  channels.push({ name, id: name, type: 'voice', private: isPrivate, category: category, topic: '', description: '', slowMode: slowMode, announcement: announcement });
   
   try {
     await updateDoc(doc(db, 'servers', sid), { channels });

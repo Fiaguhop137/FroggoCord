@@ -1,4 +1,4 @@
-// Voice Chat - WebRTC voice channels using Firestore as signaling server
+// Voice Chat - WebRTC audio using Firestore as signaling server
 (function () {
   const { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, updateDoc, addDoc } = window.froggocordFirebase;
 
@@ -62,7 +62,7 @@
       });
     } catch (e) {
       console.error('Failed to register voice participant:', e);
-      appAlert('Failed to join voice channel: ' + (e.message || e));
+      appAlert('Failed to join channel: ' + (e.message || e));
       await leaveVoiceChannel();
       return;
     }

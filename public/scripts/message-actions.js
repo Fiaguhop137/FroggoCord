@@ -410,7 +410,6 @@ ctxMenu.style.cssText = 'position:fixed;z-index:9999;display:none;background:var
 ctxMenu.innerHTML = `
 <div data-action="reply" style="padding:8px 16px;cursor:pointer;font-size:13px;color:var(--txt);">Reply</div>
 <div data-action="quote" style="padding:8px 16px;cursor:pointer;font-size:13px;color:var(--txt);">Quote</div>
-<div data-action="thread" style="padding:8px 16px;cursor:pointer;font-size:13px;color:var(--txt);">Start Thread</div>
 <div style="height:1px;background:var(--border);margin:4px 0;"></div>
 <div data-action="edit" style="padding:8px 16px;cursor:pointer;font-size:13px;color:var(--bl);">Edit</div>
 <div data-action="delete" style="padding:8px 16px;cursor:pointer;font-size:13px;color:var(--danger);">Delete</div>
@@ -460,8 +459,6 @@ ctxMenu.addEventListener('click', (e) => {
     if (typeof window.setReply === 'function') window.setReply(ctxMsgId, msg?.querySelector('.msg-author')?.textContent || '', body ? body.textContent : '');
   } else if (act === 'quote') {
     if (typeof window.quoteMessage === 'function') window.quoteMessage(ctxMsgId);
-  } else if (act === 'thread') {
-    if (typeof window.createThread === 'function') window.createThread(ctxMsgId);
   } else if (act === 'edit') {
     const msg = document.querySelector(`[data-id="${ctxMsgId}"]`);
     if (typeof window.editMsg === 'function') window.editMsg(ctxMsgId, msg?.dataset.text || '');
@@ -518,9 +515,6 @@ document.getElementById('message-container').addEventListener('click', (e) => {
       }
       else if (act === 'quote') {
         if (typeof window.quoteMessage === 'function') window.quoteMessage(id);
-      }
-      else if (act === 'thread') {
-        if (typeof window.createThread === 'function') window.createThread(id);
       }
       else if (act === 'bookmark') {
         if (typeof window.toggleBookmark === 'function') {

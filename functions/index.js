@@ -60,7 +60,6 @@ exports.cleanupOrphanedData = onSchedule({
 
   const relatedCollections = [
     ['pins', 'timestamp'],
-    ['threads', 'lastActivity'],
     ['events', 'timestamp'],
     ['auditLog', 'timestamp'],
     ['invites', 'createdAt'],
