@@ -52,20 +52,22 @@ window.toggleDMView = () => {
 };
 
 window.openDM = async (u) => {
-  const privacy = userPrivacyMap.get(u) || {};
-  if (privacy.dmAnyone === false) {
+  if (!u || u === user) return;
+  let isFriend = acceptedFriends.has(u);
+  if (!isFriend) {
     try {
       const snap1 = await getDocs(query(collection(db, "friends"), where("from", "==", user)));
       const snap2 = await getDocs(query(collection(db, "friends"), where("to", "==", user)));
-      const isFriend =
+      isFriend =
         snap1.docs.some(d => d.data().to === u && d.data().status === "accepted") ||
         snap2.docs.some(d => d.data().from === u && d.data().status === "accepted");
-
-      if (!isFriend) {
-        appAlert('This user has disabled direct messages from people they are not friends with.');
-        return;
-      }
-    } catch (e) {}
+    } catch (e) {
+      console.error('friend check failed', e);
+    }
+  }
+  if (!isFriend) {
+    appAlert('You can only start direct messages with friends.');
+    return;
   }
 
   dmWith = u;
@@ -86,10 +88,7 @@ function dmKey(a, b) {
 
 function knownUsers() {
   const set = new Set();
-  allUsers.forEach(u => u && set.add(u));
-  backfillUsers.forEach(u => u && set.add(u));
-  lastPresenceUsers.forEach(x => x && x.user && set.add(x.user));
-  servers.forEach(s => (s.members || []).forEach(u => u && set.add(u)));
+  acceptedFriends.forEach(u => u && set.add(u));
   set.delete(user);
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
@@ -609,9 +608,15 @@ function renderChannelItem(server, channel) {
   const voiceJoin = `<button style="margin-left:4px;background:transparent;border:none;color:var(--bl);cursor:pointer;font-size:11px;" onclick="joinVoiceChannel('${server.id}','${escHtml(channel.name)}')" title="Join voice"><img class="channel-icon" src="/icons/voice.svg" alt="" aria-hidden="true"> Join</button>`;
   const privateIcon = channel.private ? '<img class="channel-icon" src="/icons/lock.svg" alt="" aria-hidden="true"> ' : '';
   const announcementIcon = channel.announcement ? '<img class="channel-icon" src="/icons/note.svg" alt="" aria-hidden="true"> ' : '';
-  const result = `<div class="channel-row" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;"><button class="cb ${active ? 'active' : ''}" onclick="switchServerChannel('${server.id}','${escHtml(channel.name)}')" oncontextmenu="event.preventDefault();showChannelCtx(event,'${server.id}','${escHtml(channel.name)}');return false;">${privateIcon}${announcementIcon}${voiceIcon}# ${escHtml(channel.name)}</button>${voiceJoin}${unreadBadge('srv_' + server.id + '_' + channel.name)}${controls}</div>`;
+  const result = `<div class="channel-row" data-server-id="${escHtml(server.id)}" data-channel-name="${escHtml(channel.name)}"><button class="cb ${active ? 'active' : ''}" onclick="switchServerChannel('${server.id}','${escHtml(channel.name)}')">${privateIcon}${announcementIcon}${voiceIcon}# ${escHtml(channel.name)}</button>${voiceJoin}${unreadBadge('srv_' + server.id + '_' + channel.name)}${controls}</div>`;
   return result;
 }
+
+document.addEventListener('contextmenu', (event) => {
+  const row = event.target.closest('.channel-row');
+  if (!row) return;
+  showChannelCtx(event, row.dataset.serverId, row.dataset.channelName);
+});
 
 function showServerCtx(e, sid) {
   e.preventDefault();

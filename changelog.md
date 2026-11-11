@@ -192,3 +192,4 @@
  - 20a6d-2026.11.06-18.58.23-0500: Added a daily scheduled cleanup that removes server-scoped orphaned Firestore data older than 30 days, including messages, attachments, pins, threads, events, audit logs, invites, webhooks, and message history.
  - 20a6d-2026.11.08-15.54.26-0500: Made voice channels the only channel type, migrated existing channels to voice on load, and retained text messaging inside every voice channel.
  - 20a6d-2026.11.09-16.09.26-0500: Replaced separate thread actions and storage with same-channel reply chains, added reply message IDs, renamed voice-channel UI labels to Channels, and removed the age-restricted channel option.
+ - 20a6d-2026.11.11-16.11.35-0500: Restricted DM discovery and creation to accepted friends, fixed channel right-click context menus, and added Firebase TOTP authenticator enrollment plus sign-in verification. Verified all frontend JavaScript with `node --check` and checked the diff for whitespace errors.

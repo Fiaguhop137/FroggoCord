@@ -24,6 +24,7 @@ window.getBadgeIconUrl = (badge) => {
   return '/icons/badges/' + (badgeIconFiles[key] || 'default-badge') + '.avif';
 };
     let chan = null, user = null, typingUnsub = null, typingTimer = null, isSignUpMode = false, pfp = '', reply = null, curStat = 'online', idle = null, mode = 'dms', dmWith = null, servers = [], currentServer = null, lastPresenceUsers = [], lastRead = {}, curActivity = '';
+    let acceptedFriends = new Set();
     let heartbeat = null, idleNow = false, lastActivity = Date.now();
     let allUsers = [], backfillUsers = [], userPfpMap = new Map(), userPrivacyMap = new Map(), userBannerMap = new Map(), userBackgroundMap = new Map(), userAccentMap = new Map(), userDecorationMap = new Map(), userBgColorMap = new Map(), userTextColorMap = new Map(), userCustomStatusMap = new Map(), userPronounsMap = new Map(), userBioMap = new Map(), userDisplayNameMap = new Map(), userBadgesMap = new Map();
     let avifEncoderPromise = null;
@@ -304,6 +305,13 @@ window.getBadgeIconUrl = (badge) => {
       document.getElementById('sa-status').value = settings.status || curStat || 'online';
       const actEl = document.getElementById('sa-activity');
       if (actEl) actEl.value = curActivity || '';
+      const authenticatorButton = document.getElementById('authenticator-setup-btn');
+      const authenticatorStatus = document.getElementById('authenticator-status');
+      const authenticatorSetup = document.getElementById('authenticator-setup');
+      const hasAuthenticator = auth.currentUser && auth.currentUser.multiFactor.enrolledFactors.some(factor => factor.factorId === 'totp');
+      if (authenticatorButton) authenticatorButton.style.display = hasAuthenticator ? 'none' : '';
+      if (authenticatorSetup) authenticatorSetup.style.display = 'none';
+      if (authenticatorStatus) authenticatorStatus.textContent = hasAuthenticator ? 'Authenticator enabled for this account.' : '';
       setThemeSelection(settings.theme || activeTheme);
       document.getElementById('sn-desktop').checked = settings.notifications.desktop;
       document.getElementById('sn-sound').checked = settings.notifications.sound;

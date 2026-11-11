@@ -1,7 +1,7 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js';
-import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getMultiFactorResolver,multiFactor,TotpMultiFactorGenerator} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js';
 import {getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc} from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js';
-window.froggocordFirebase={initializeApp,getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc};
+window.froggocordFirebase={initializeApp,getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,getMultiFactorResolver,multiFactor,TotpMultiFactorGenerator,getFirestore,collection,addDoc,onSnapshot,query,orderBy,limit,startAfter,serverTimestamp,doc,updateDoc,deleteDoc,setDoc,where,getDocs,getDoc};
 const themeIndexResponse = await fetch('/themes/index.json', { cache: 'no-store' });
 if (!themeIndexResponse.ok) throw new Error(`Could not load theme index: ${themeIndexResponse.status}`);
 const themeIds = [...new Set(await themeIndexResponse.json())]

@@ -215,6 +215,18 @@
         <label class="field-label">Avatar</label>
         <input id="sa-avatar-file" type="file" accept="image/*" style="width:100%;margin:4px 0 8px;color:var(--txt);">
         <div id="sa-avatar-preview" style="margin:8px 0;width:80px;height:80px;border-radius:50%;background:var(--bg-t);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--accent-contrast);">U</div>
+        <hr style="border:none;border-top:1px solid var(--bg-s);margin:16px 0;">
+        <label class="field-label">Authenticator app</label>
+        <p class="settings-description">Protect sign-in with a time-based code from an authenticator app.</p>
+        <button id="authenticator-setup-btn" type="button" class="btn btn-secondary" onclick="setupAuthenticator()">Set up authenticator</button>
+        <div id="authenticator-setup" style="display:none;margin-top:10px;">
+            <label class="field-label" for="authenticator-secret">Setup key</label>
+            <textarea id="authenticator-secret" class="inp2" rows="2" readonly></textarea>
+            <label class="field-label" for="authenticator-code">Verification code</label>
+            <input id="authenticator-code" class="inp2" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code">
+            <button type="button" class="btn btn-primary" onclick="finishAuthenticatorSetup()" style="margin-top:8px;">Enable authenticator</button>
+        </div>
+        <div id="authenticator-status" class="settings-description" aria-live="polite"></div>
         </section>
         <section id="settings-notifications-panel" class="settings-panel-section" role="tabpanel" aria-labelledby="settings-notifications-tab">
         <p class="settings-description">Choose how and when you're notified.</p>

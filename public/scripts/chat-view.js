@@ -179,7 +179,9 @@ window.openProfile = async (u) => {
       } catch (e) { console.log("friend check failed", e); }
       html += btnHtml;
     }
-    html += `<button onclick="openDM('${escHtml(u)}'); closeProfile();" style="background:var(--bg-t);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Message</button>`;
+    if (friendDoc) {
+      html += `<button onclick="openDM('${escHtml(u)}'); closeProfile();" style="background:var(--bg-t);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Message</button>`;
+    }
     html += `<button onclick="editUserNote('${escHtml(u)}'); closeProfile();" style="background:var(--bg-t);color:var(--white);border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Note</button>`;
   } else {
     html += `<div style="color:var(--mut);font-size:12px;">This is you</div>`;
@@ -798,6 +800,53 @@ atPopup.addEventListener('click', (e) => {
   if (el) window.insertAt(el.dataset.u);
 });
 
+window.setupAuthenticator = async () => {
+  const { multiFactor, TotpMultiFactorGenerator } = window.froggocordFirebase;
+  const currentUser = window.auth.currentUser;
+  const status = document.getElementById('authenticator-status');
+  if (!currentUser) { appAlert('You must be signed in to configure an authenticator.'); return; }
+  if (currentUser.multiFactor.enrolledFactors.some(factor => factor.factorId === 'totp')) {
+    if (status) status.textContent = 'An authenticator is already enabled for this account.';
+    return;
+  }
+  try {
+    const session = await multiFactor(currentUser).getSession();
+    const secret = await TotpMultiFactorGenerator.generateSecret(session);
+    const accountName = currentUser.email || user;
+    const issuer = 'FroggoCord';
+    const uri = secret.generateQrCodeUrl(accountName, issuer);
+    document.getElementById('authenticator-secret').value = uri;
+    document.getElementById('authenticator-code').value = '';
+    document.getElementById('authenticator-setup').style.display = 'block';
+    document.getElementById('authenticator-setup-btn').style.display = 'none';
+    window.__pendingTotpSecret = secret;
+    if (status) status.textContent = 'Add this setup key to your authenticator app, then enter its current code.';
+  } catch (error) {
+    console.error('Authenticator setup failed', error);
+    if (status) status.textContent = 'Could not start authenticator setup.';
+  }
+};
+
+window.finishAuthenticatorSetup = async () => {
+  const { multiFactor, TotpMultiFactorGenerator } = window.froggocordFirebase;
+  const code = document.getElementById('authenticator-code').value.trim();
+  const status = document.getElementById('authenticator-status');
+  if (!/^\d{6}$/.test(code) || !window.__pendingTotpSecret) {
+    if (status) status.textContent = 'Enter the 6-digit code from your authenticator app.';
+    return;
+  }
+  try {
+    const assertion = TotpMultiFactorGenerator.assertionForEnrollment(window.__pendingTotpSecret, code);
+    await multiFactor(window.auth.currentUser).enroll(assertion, 'Authenticator app');
+    window.__pendingTotpSecret = null;
+    document.getElementById('authenticator-setup').style.display = 'none';
+    document.getElementById('authenticator-status').textContent = 'Authenticator enabled for this account.';
+  } catch (error) {
+    console.error('Authenticator enrollment failed', error);
+    if (status) status.textContent = 'That code was not accepted. Check your authenticator app and try again.';
+  }
+};
+
 window.insertAt = (u) => {
   const val = chatInput.value;
   const at = val.lastIndexOf('@');
@@ -813,12 +862,33 @@ window.handleKeyPress = (e) => {
   }
 };
 
-document.getElementById('auth-submit-btn').addEventListener('click', () => {
+document.getElementById('auth-submit-btn').addEventListener('click', async () => {
   const u = document.getElementById('auth-username').value.trim();
   const p = document.getElementById('auth-password').value.trim();
   if (!u || !p) { appAlert("Please enter both fields."); return; }
-  if (isSignUpMode) { createUserWithEmailAndPassword(window.auth, u + "@friends.com", p).catch(err => appAlert(err.message)); }
-  else { signInWithEmailAndPassword(window.auth, u + "@friends.com", p).catch(err => appAlert(err.message)); }
+  if (isSignUpMode) {
+    createUserWithEmailAndPassword(window.auth, u + "@friends.com", p).catch(err => appAlert(err.message));
+    return;
+  }
+  try {
+    await signInWithEmailAndPassword(window.auth, u + "@friends.com", p);
+  } catch (error) {
+    if (error.code !== 'auth/multi-factor-auth-required') {
+      appAlert(error.message);
+      return;
+    }
+    const { getMultiFactorResolver, TotpMultiFactorGenerator } = window.froggocordFirebase;
+    const resolver = getMultiFactorResolver(window.auth, error);
+    const totpHint = resolver.hints.find(hint => hint.factorId === 'totp');
+    if (!totpHint) { appAlert('This account requires an unsupported second factor.'); return; }
+    const code = await appPrompt('Enter the code from your authenticator app:');
+    if (!code || !/^\d{6}$/.test(code.trim())) { appAlert('Enter the 6-digit authenticator code.'); return; }
+    try {
+      await resolver.resolveSignIn(TotpMultiFactorGenerator.assertionForSignIn(totpHint.uid, code.trim()));
+    } catch (mfaError) {
+      appAlert(mfaError.message);
+    }
+  }
 });
 
 document.getElementById('auth-password-toggle').addEventListener('click', () => {
@@ -936,6 +1006,11 @@ onAuthStateChanged(window.auth, async (u) => {
     });
 
     onSnapshot(query(collection(db,"friends"),where("to","==",user)),(snap)=>{
+      snap.docs.forEach(d => {
+        const friend = d.data().from;
+        if (d.data().status === "accepted") acceptedFriends.add(friend);
+        else acceptedFriends.delete(friend);
+      });
       const pending = snap.docs.filter(d => {
         if (d.data().status !== "pending") return false;
         const from = d.data().from;
@@ -946,6 +1021,14 @@ onAuthStateChanged(window.auth, async (u) => {
         const data = d.data();
         return `<div>${escHtml(data.from)} sent you a request <button onclick="acceptReq('${d.id}')" style="font-size:10px;padding:2px 6px;background:var(--bl);color:var(--accent-contrast);border:none;border-radius:3px;">Accept</button> <button onclick="declineReq('${d.id}')" style="font-size:10px;padding:2px 6px;background:var(--danger);color:var(--white);border:none;border-radius:3px;">Decline</button></div>`;
       }).join('');
+      renderUserList();
+      if (mode === 'dms') renderSidebar();
+    });
+    onSnapshot(query(collection(db,"friends"),where("from","==",user)),(snap)=>{
+      snap.docs.filter(d => d.data().status === "accepted").forEach(d => acceptedFriends.add(d.data().to));
+      snap.docs.filter(d => d.data().status !== "accepted").forEach(d => acceptedFriends.delete(d.data().to));
+      renderUserList();
+      if (mode === 'dms') renderSidebar();
     });
 
     pfp = localStorage.getItem('pfp_'+user) || '';
